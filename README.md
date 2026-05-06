@@ -1,9 +1,6 @@
-Distans-FastAPI ⚡🌍
-Este es un proyecto base para la creación de APIs de alto rendimiento utilizando FastAPI, SQLAlchemy (con GeoAlchemy2) y PostgreSQL + PostGIS, completamente dockerizado para un entorno de desarrollo aislado.
-<!-- Badges -->
+
 # Distans-FastAPI ⚡🌍
 
-![Python](https://img.shields.io/badge/python-3.11-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-%2300BCD4.svg?style=flat&logo=fastapi) ![Docker](https://img.shields.io/badge/docker-%23007ACC.svg?style=flat&logo=docker) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 Este es un proyecto base para la creación de APIs de alto rendimiento utilizando FastAPI, SQLAlchemy (con GeoAlchemy2) y PostgreSQL + PostGIS, completamente dockerizado para un entorno de desarrollo aislado.
 
