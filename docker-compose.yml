@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgis/postgis:15-3.4
+    container_name: fastapi_postgis_db
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - fastapi_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432" 
+    restart: on-failure
+
+  web:
+    build: .
+    container_name: fastapi_web
+    # Uvicorn arranca la app y --reload hace que se reinicie si cambias el código
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8001:8000"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+
+volumes:
+  fastapi_postgres_data:
