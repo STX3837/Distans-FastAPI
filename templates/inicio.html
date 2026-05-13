@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Distans{% endblock %}
+
+{% block content %}
+<main class="hero-wrap">
+    <section class="hero-card">
+        <h1>Bienvenido a Distans</h1>
+        <p>Te estamos redirigiendo al registro.</p>
+        <a class="cta-link" href="/registro">Ir al registro ahora</a>
+    </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    setTimeout(() => {
+        window.location.href = '/registro';
+    }, 1200);
+</script>
+{% endblock %}
