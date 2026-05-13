@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Distans{% endblock %}</title>
+    <link rel="stylesheet" href="/static/auth.css">
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/registro" aria-label="Distans">
+            <div class="brand-mark" aria-hidden="true">
+                <svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="8" y="18" width="30" height="30" rx="4" fill="#F3FAFF" stroke="#4AA3DF" stroke-width="2"/>
+                    <path d="M12 24H34" stroke="#4AA3DF" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M14 30H32" stroke="#4AA3DF" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M18 18L18 14C18 11.8 19.8 10 22 10H24C26.2 10 28 11.8 28 14V18" stroke="#4AA3DF" stroke-width="2"/>
+                    <circle cx="24" cy="42" r="3" fill="#4AA3DF"/>
+                    <path d="M24 52C24 52 33 43.9 33 37.1C33 32.1 29 28 24 28C19 28 15 32.1 15 37.1C15 43.9 24 52 24 52Z" fill="#F3FAFF" stroke="#F0A43A" stroke-width="2"/>
+                    <circle cx="24" cy="37" r="2.6" fill="#4AA3DF"/>
+                </svg>
+            </div>
+            <span class="brand-name">DISTANS</span>
+        </a>
+
+        <div class="topbar-actions">
+            {% if user_name %}
+            <span class="user-name">{{ user_name }}</span>
+            <button class="topbar-button topbar-logout" type="button" onclick="cerrarSesion()">Cerrar sesión</button>
+            {% else %}
+            <a class="topbar-button {% if active_route == '/registro' %}active{% endif %}" href="/registro">Registrarse</a>
+            <a class="topbar-button {% if active_route == '/login' %}active{% endif %}" href="/login">Iniciar sesión</a>
+            <a class="icon-button" href="/login" aria-label="Usuario">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 21C20 17.6863 16.4183 15 12 15C7.58172 15 4 17.6863 4 21" stroke="#1E4FA8" stroke-width="1.8" stroke-linecap="round"/>
+                    <circle cx="12" cy="8" r="4" stroke="#1E4FA8" stroke-width="1.8"/>
+                </svg>
+            </a>
+            <a class="icon-button" href="/login" aria-label="Carrito">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2 3H5L7.2 14.2C7.3 14.7 7.7 15 8.2 15H18.6C19.1 15 19.5 14.7 19.6 14.2L21 6H6" stroke="#1E4FA8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="9" cy="20" r="1.4" stroke="#1E4FA8" stroke-width="1.8"/>
+                    <circle cx="17" cy="20" r="1.4" stroke="#1E4FA8" stroke-width="1.8"/>
+                </svg>
+            </a>
+            {% endif %}
+        </div>
+    </header>
+
+    {% block content %}{% endblock %}
+
+    <script src="/static/auth.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

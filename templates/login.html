@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar sesión - Distans{% endblock %}
+
+{% block content %}
+<main class="page-wrap login-wrap">
+    <section class="card card-login">
+        <h1>Iniciar sesión</h1>
+        <form id="loginForm">
+            <div class="field">
+                <label for="email">Correo electrónico</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="field">
+                <label for="contrasena">Contraseña</label>
+                <input type="password" id="contrasena" name="contrasena" required>
+            </div>
+            <button type="submit" class="button">Entrar</button>
+        </form>
+        <p class="error-message login-error" id="loginError"></p>
+        <p class="note">¿No tienes cuenta? <a href="/registro">Regístrate</a></p>
+    </section>
+</main>
+{% endblock %}
