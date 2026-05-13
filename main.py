@@ -1,42 +1,35 @@
-import os
 from fastapi import FastAPI
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.orm import declarative_base, sessionmaker
-from geoalchemy2 import Geometry
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
+import os
+from app.database import engine
+from app.models import Base
+from app.routers import users, auth
 
-# 1. Leer variables de entorno
-DB_USER = os.getenv("DB_USER", "mi_usuario")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "mi_contrasena")
-DB_HOST = os.getenv("DB_HOST", "db")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "mi_base_datos")
+# Crear la aplicación FastAPI
+app = FastAPI(
+    title="Distans - Sistema de Gestión",
+    description="API para gestión de usuarios con soporte administrativo",
+    version="1.0.0"
+)
 
-# 2. Configurar la URL de conexión de PostgreSQL
-SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET_KEY", "distans-dev-secret-change-me"),
+    same_site="lax",
+    https_only=False,
+)
 
-# 3. Crear el motor de la base de datos
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-# 4. Definir un Modelo Espacial (Equivalente al que hicimos en Django)
-class Ubicacion(Base):
-    __tablename__ = "ubicaciones"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String, index=True)
-    # Campo geométrico de PostGIS para un punto (Longitud, Latitud)
-    punto = Column(Geometry(geometry_type='POINT', srid=4326))
-
-# 5. Crear la aplicación FastAPI
-app = FastAPI(title="Mi TFG con FastAPI y PostGIS")
+# Servir archivos estáticos
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Crear las tablas en la BD (En un proyecto real se usan migraciones con 'Alembic')
 @app.on_event("startup")
 def startup_event():
     Base.metadata.create_all(bind=engine)
 
-# 6. Definir rutas (Endpoints)
-@app.get("/")
-def read_root():
-    return {"mensaje": "¡FastAPI y PostGIS están conectados y funcionando!"}
+# Registrar routers
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(users.admin_router)
