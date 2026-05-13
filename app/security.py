@@ -1,7 +1,7 @@
 from passlib.context import CryptContext
 
-# Use bcrypt_sha256 to allow arbitrary-length passwords (pre-hashes with SHA-256)
-# Use PBKDF2-SHA256 to avoid bcrypt 72-byte limitation and external bcrypt dependency
+# PBKDF2-SHA256 es el esquema de hash elegido para contraseñas.
+# Evita dependencia directa de bcrypt y mantiene un algoritmo robusto y ampliamente soportado.
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
@@ -16,7 +16,6 @@ def hash_password(password: str) -> str:
     Returns:
         Hash seguro de la contraseña
     """
-    # Passlib's bcrypt_sha256 pre-hashes with SHA-256, avoiding bcrypt 72-byte limit
     return pwd_context.hash(password)
 
 

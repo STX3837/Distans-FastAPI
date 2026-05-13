@@ -13,11 +13,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
+environment = os.getenv("ENVIRONMENT", "development").lower()
+session_secret_key = os.getenv("SESSION_SECRET_KEY")
+if not session_secret_key:
+    raise RuntimeError("SESSION_SECRET_KEY environment variable is required")
+
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SESSION_SECRET_KEY", "distans-dev-secret-change-me"),
+    secret_key=session_secret_key,
     same_site="lax",
-    https_only=False,
+    https_only=environment in {"production", "staging"},
 )
 
 # Servir archivos estáticos

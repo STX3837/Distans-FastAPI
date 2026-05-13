@@ -75,7 +75,7 @@ def actualizar_usuario(db: Session, usuario_id: int, datos_actualizacion: Usuari
         return None
     
     # Actualizar solo los campos permitidos
-    datos_dict = datos_actualizacion.dict(exclude_unset=True)
+    datos_dict = datos_actualizacion.model_dump(exclude_unset=True)
     for campo, valor in datos_dict.items():
         if valor is not None:
             setattr(usuario, campo, valor)
@@ -88,15 +88,17 @@ def actualizar_usuario(db: Session, usuario_id: int, datos_actualizacion: Usuari
 def actualizar_usuario_admin(db: Session, usuario_id: int, datos_actualizacion: UsuarioAdminUpdate) -> Optional[Usuario]:
     """
     Actualiza datos del usuario como administrador (RF32).
-    El administrador puede actualizar todos los campos incluido es_administrador y activo.
+    El administrador puede actualizar todos los campos, incluidos rol y activo.
     """
     usuario = obtener_usuario_por_id(db, usuario_id)
     if not usuario:
         return None
     
-    datos_dict = datos_actualizacion.dict(exclude_unset=True)
+    datos_dict = datos_actualizacion.model_dump(exclude_unset=True)
     for campo, valor in datos_dict.items():
         if valor is not None:
+            if campo == "rol" and isinstance(valor, str):
+                valor = RolUsuario(valor.lower())
             setattr(usuario, campo, valor)
     
     db.commit()

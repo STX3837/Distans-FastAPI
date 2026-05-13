@@ -55,8 +55,11 @@ class UsuarioResponse(UsuarioBase):
         from_attributes = True
 
 
-class UsuarioAdminUpdate(UsuarioBase):
+class UsuarioAdminUpdate(BaseModel):
     """Schema para actualizar usuario como administrador - RF32"""
+    nombre: Optional[str] = None
+    apellidos: Optional[str] = None
+    email: Optional[EmailStr] = None
     telefono: Optional[str] = None
     direccion: Optional[str] = None
     ciudad: Optional[str] = None

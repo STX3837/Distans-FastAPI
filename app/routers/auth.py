@@ -564,8 +564,8 @@ def pagina_registro():
                         if (detail.includes('email')) {
                             document.getElementById('errorEmail').textContent = 'Email ya registrado';
                             document.getElementById('errorEmail').style.display = 'block';
-                        } else if (detail.includes('password') || detail.includes('contraseña') || detail.includes('72') || detail.includes('longer') || detail.includes('largo')) {
-                            document.getElementById('errorContrasena').textContent = 'La contraseña es demasiado larga';
+                        } else if (detail.includes('contraseña')) {
+                            document.getElementById('errorContrasena').textContent = data.detail;
                             document.getElementById('errorContrasena').style.display = 'block';
                         } else {
                             alert('Error: ' + (data.detail || 'No se pudo registrar'));
@@ -615,15 +615,9 @@ def registrar_usuario(
     try:
         nuevo_usuario = crear_usuario(db, usuario_data)
     except ValueError as error:
-        msg = str(error)
-        # Traducir mensaje común de bcrypt a español
-        if 'password cannot be longer' in msg or '72' in msg or 'longer than' in msg:
-            detalle = 'La contraseña es demasiado larga'
-        else:
-            detalle = msg
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=detalle
+            detail=str(error)
         )
     
     return {
