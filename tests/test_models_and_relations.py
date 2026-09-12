@@ -29,25 +29,14 @@ TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_eng
 @pytest.fixture(scope="function")
 def db_session():
     """Fixture para crear una sesión de base de datos limpia para cada test."""
-    # Crear todas las tablas (ignorar errores de GeoAlchemy2 en SQLite)
-    try:
-        Base.metadata.create_all(bind=test_engine)
-    except Exception as e:
-        # GeoAlchemy2 no funciona con SQLite, pero no afecta a nuestros tests
-        if "RecoverGeometryColumn" not in str(e):
-            raise
-
+    tables = [t for t in Base.metadata.sorted_tables if t.name != "ubicaciones"]
+    Base.metadata.create_all(bind=test_engine, tables=tables)
     session = TestSessionLocal()
-    yield session
-
-    # Limpiar después de cada test (ignorar errores de GeoAlchemy2 en SQLite)
-    session.close()
     try:
-        Base.metadata.drop_all(bind=test_engine)
-    except Exception as e:
-        # GeoAlchemy2 no funciona con SQLite, pero no afecta a nuestros tests
-        if "CheckSpatialIndex" not in str(e):
-            raise
+        yield session
+    finally:
+        session.close()
+        Base.metadata.drop_all(bind=test_engine, tables=tables)
 
 
 class TestUsuarioEntity:

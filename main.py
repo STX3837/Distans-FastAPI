@@ -5,6 +5,7 @@ import os
 from app.database import engine
 from app.models import Base
 from app.routers import users, auth
+from app.password_reset import router as password_reset_router
 
 # Crear la aplicación FastAPI
 app = FastAPI(
@@ -36,5 +37,6 @@ def startup_event():
 
 # Registrar routers
 app.include_router(auth.router)
+app.include_router(password_reset_router)
 app.include_router(users.router)
 app.include_router(users.admin_router)

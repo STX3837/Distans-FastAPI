@@ -1,15 +1,16 @@
 import secrets
+import hashlib
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from app.crud import autenticar_usuario, crear_usuario
 from app.database import get_db
 from app.models import Usuario
-from app.schemas import UsuarioCreate
+from app.schemas import UsuarioRegistro
 
 router = APIRouter(tags=["autenticación"])
 templates = Jinja2Templates(directory="templates")
@@ -17,7 +18,7 @@ templates = Jinja2Templates(directory="templates")
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    contrasena: str
+    contrasena: str = Field(max_length=128)
 
 
 def _template_context(request: Request, active_route: str = "", user_name: str | None = None) -> dict:
@@ -40,7 +41,7 @@ def _validar_csrf(request: Request) -> None:
             detail="CSRF token faltante",
         )
 
-    if session_token != header_token or session_token != cookie_token:
+    if not secrets.compare_digest(session_token, header_token) or not secrets.compare_digest(session_token, cookie_token):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="CSRF token inválido",
@@ -49,11 +50,11 @@ def _validar_csrf(request: Request) -> None:
 
 @router.get("/", response_class=HTMLResponse)
 def pagina_inicio(request: Request):
-    """Página de inicio con redirección visual al registro."""
+    """Página de inicio con enlaces al registro, login y recuperación."""
     return templates.TemplateResponse(
         request=request,
         name="inicio.html",
-        context=_template_context(request, active_route="/registro"),
+        context=_template_context(request, active_route="/"),
     )
 
 
@@ -68,8 +69,10 @@ def pagina_registro(request: Request):
 
 
 @router.post("/api/registro", status_code=status.HTTP_201_CREATED)
-def registrar_usuario(usuario_data: UsuarioCreate, db: Session = Depends(get_db)):
+def registrar_usuario(usuario_data: UsuarioRegistro, db: Session = Depends(get_db)):
     """Endpoint de API para registrar un nuevo usuario."""
+    if usuario_data.rol == "admin":
+        raise HTTPException(status_code=403, detail="No puedes registrarte como administrador")
     usuario_existente = db.query(Usuario).filter(Usuario.email == usuario_data.email).first()
     if usuario_existente:
         raise HTTPException(
@@ -119,8 +122,10 @@ def iniciar_sesion(datos: LoginRequest, request: Request, db: Session = Depends(
             detail="Tu cuenta está inactiva",
         )
 
+    request.session.clear()
     request.session["usuario"] = {
         "id": usuario.id,
+        "version_contrasena": hashlib.sha256(usuario.contrasena_hash.encode()).hexdigest(),
         "nombre": usuario.nombre,
         "apellidos": usuario.apellidos,
         "email": usuario.email,
@@ -158,10 +163,18 @@ def cerrar_sesion(request: Request):
 
 
 @router.get("/login", response_class=HTMLResponse)
-def pagina_login(request: Request):
+def pagina_login(request: Request, db: Session = Depends(get_db)):
     """Página de login."""
     if request.session.get("usuario"):
-        return RedirectResponse(url="/bienvenida", status_code=status.HTTP_303_SEE_OTHER)
+        from app.routers.users import _obtener_usuario_actual
+        try:
+            _obtener_usuario_actual(request, db)
+        except HTTPException as error:
+            if error.status_code not in {401, 403, 404}:
+                raise
+            request.session.clear()
+        else:
+            return RedirectResponse(url="/bienvenida", status_code=status.HTTP_303_SEE_OTHER)
 
     return templates.TemplateResponse(
         request=request,
@@ -171,18 +184,11 @@ def pagina_login(request: Request):
 
 
 @router.get("/bienvenida", response_class=HTMLResponse)
-def pagina_bienvenida(request: Request):
-    """Página mostrada después de un login correcto."""
-    usuario = request.session.get("usuario")
-    if not usuario:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="bienvenida.html",
-        context=_template_context(
-            request,
-            active_route="/bienvenida",
-            user_name=usuario.get("nombre", "Usuario"),
-        ),
-    )
+def pagina_bienvenida(request: Request, db: Session = Depends(get_db)):
+    from app.routers.users import _obtener_usuario_actual
+    if not request.session.get("usuario"):
+        return RedirectResponse(url="/login", status_code=303)
+    usuario = _obtener_usuario_actual(request, db)
+    return templates.TemplateResponse(request=request, name="bienvenida.html", context={
+        "user_name": usuario.nombre, "es_admin": usuario.rol.value == "admin",
+    })

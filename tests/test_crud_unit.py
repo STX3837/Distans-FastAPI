@@ -32,7 +32,7 @@ def test_actualizar_usuario_admin_permite_rol_y_activo(user_factory, db_session)
 
 
 def test_autenticar_usuario_devuelve_none_si_password_incorrecta(user_factory, db_session):
-    user_factory(email="auth1@example.com", contrasena="real123")
+    user_factory(email="auth1@example.com", contrasena="real12345")
 
     autenticado = crud.autenticar_usuario(db_session, "auth1@example.com", "mal123")
 
@@ -40,9 +40,9 @@ def test_autenticar_usuario_devuelve_none_si_password_incorrecta(user_factory, d
 
 
 def test_autenticar_usuario_devuelve_usuario_si_password_correcta(user_factory, db_session):
-    user = user_factory(email="auth2@example.com", contrasena="real123")
+    user = user_factory(email="auth2@example.com", contrasena="real12345")
 
-    autenticado = crud.autenticar_usuario(db_session, "auth2@example.com", "real123")
+    autenticado = crud.autenticar_usuario(db_session, "auth2@example.com", "real12345")
 
     assert autenticado is not None
     assert autenticado.id == user.id

@@ -1,9 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import List
+import hashlib
+import secrets
+from fastapi.responses import HTMLResponse, RedirectResponse
+from app.routers.auth import templates, _validar_csrf
 from app.models import Usuario, RolUsuario
 from app.schemas import (
-    UsuarioCreate, 
+    UsuarioAdminCreate,
+    DatosCompradorPago,
     UsuarioUpdate, 
     UsuarioResponse,
     UsuarioAdminUpdate,
@@ -49,6 +54,11 @@ def _obtener_usuario_actual(request: Request, db: Session) -> Usuario:
             detail="Usuario no encontrado"
         )
 
+    expected = hashlib.sha256(usuario.contrasena_hash.encode()).hexdigest()
+    if not secrets.compare_digest(session_user.get("version_contrasena", ""), expected):
+        request.session.clear()
+        raise HTTPException(status_code=401, detail="La sesión ha caducado; inicia sesión de nuevo")
+
     if not usuario.activo:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -80,6 +90,17 @@ def obtener_perfil(request: Request, db: Session = Depends(get_db)):
     return _obtener_usuario_actual(request, db)
 
 
+@router.get("/me/datos-pago", response_model=DatosCompradorPago)
+def obtener_datos_comprador_pago(request: Request, db: Session = Depends(get_db)):
+    """RF27: facilita los datos guardados de la cuenta para el formulario de pago."""
+    usuario = _obtener_usuario_actual(request, db)
+    campos = ("nombre", "apellidos", "email", "telefono", "direccion", "ciudad", "codigo_postal")
+    faltantes = [campo for campo in campos if not getattr(usuario, campo) or not getattr(usuario, campo).strip()]
+    if faltantes:
+        raise HTTPException(status_code=409, detail="Completa los datos de tu cuenta antes de pagar: " + ", ".join(faltantes))
+    return usuario
+
+
 @router.put("/me", response_model=UsuarioResponse)
 def actualizar_perfil(
     request: Request,
@@ -91,6 +112,7 @@ def actualizar_perfil(
     RF28: El usuario puede modificar sus datos (menos contraseña).
     """
     usuario = _obtener_usuario_actual(request, db)
+    _validar_csrf(request)
     
     usuario_actualizado = actualizar_usuario(db, usuario.id, datos)
     return usuario_actualizado
@@ -107,6 +129,7 @@ def cambiar_contrasena_usuario(
     Requiere que verifique su contraseña actual.
     """
     usuario = _obtener_usuario_actual(request, db)
+    _validar_csrf(request)
     
     if not cambiar_contrasena(db, usuario.id, datos.contrasena_actual, datos.contrasena_nueva):
         raise HTTPException(
@@ -114,7 +137,8 @@ def cambiar_contrasena_usuario(
             detail="Contraseña actual incorrecta"
         )
     
-    return {"mensaje": "Contraseña actualizada exitosamente"}
+    request.session.clear()
+    return {"mensaje": "Contraseña actualizada; inicia sesión de nuevo"}
 
 
 # ============ RF32: Vistas de Administrador ============
@@ -137,6 +161,26 @@ def listar_usuarios(
     
     usuarios = obtener_todos_usuarios(db, skip, limit)
     return usuarios
+
+
+@router.get("/cuenta", response_class=HTMLResponse)
+def pagina_cuenta(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
+    usuario = _obtener_usuario_actual(request, db)
+    return templates.TemplateResponse(request=request, name="cuenta.html", context={
+        "usuario": usuario, "user_name": usuario.nombre, "es_admin": usuario.rol == RolUsuario.ADMIN,
+    })
+
+
+@admin_router.get("/panel", response_class=HTMLResponse)
+def pagina_admin(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
+    usuario = _obtener_admin_actual(request, db)
+    return templates.TemplateResponse(request=request, name="administracion.html", context={
+        "user_name": usuario.nombre, "es_admin": True,
+    })
 
 
 @admin_router.get("/{usuario_id}", response_model=UsuarioAdminResponse)
@@ -163,7 +207,7 @@ def obtener_usuario(
 @admin_router.post("/", response_model=UsuarioAdminResponse, status_code=status.HTTP_201_CREATED)
 def crear_usuario_admin(
     request: Request,
-    usuario_data: UsuarioCreate,
+    usuario_data: UsuarioAdminCreate,
     db: Session = Depends(get_db)
 ):
     """
@@ -171,6 +215,7 @@ def crear_usuario_admin(
     RF32: Los administradores deben poder crear usuarios nuevos.
     """
     _obtener_admin_actual(request, db)
+    _validar_csrf(request)
     
     # Verificar que el email no exista
     usuario_existente = db.query(Usuario).filter(Usuario.email == usuario_data.email).first()
@@ -180,7 +225,10 @@ def crear_usuario_admin(
             detail="El email ya está registrado"
         )
     
-    nuevo_usuario = crear_usuario(db, usuario_data)
+    try:
+        nuevo_usuario = crear_usuario(db, usuario_data)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
     return nuevo_usuario
 
 
@@ -204,6 +252,7 @@ def actualizar_usuario_admin_endpoint(
             detail="Usuario no encontrado"
         )
     
+    _validar_csrf(request)
     usuario_actualizado = actualizar_usuario_admin(db, usuario_id, datos)
     return usuario_actualizado
 
@@ -220,6 +269,7 @@ def eliminar_usuario_admin(
     """
     _obtener_admin_actual(request, db)
     
+    _validar_csrf(request)
     if not eliminar_usuario(db, usuario_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

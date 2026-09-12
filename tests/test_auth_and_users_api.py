@@ -38,8 +38,9 @@ def test_registro_email_duplicado_devuelve_400(client, user_factory):
         "nombre": "Otro",
         "apellidos": "Usuario",
         "email": "repetido@example.com",
+        "telefono": "600123123", "direccion": "Calle Sol 1", "ciudad": "Madrid", "codigo_postal": "28001",
         "rol": "comprador",
-        "contrasena": "clave123",
+        "contrasena": "clave12345",
     }
 
     response = client.post("/api/registro", json=payload)
@@ -83,11 +84,11 @@ def test_login_invalido_devuelve_401(client, user_factory):
 
 
 def test_login_usuario_inactivo_devuelve_403(client, user_factory):
-    user_factory(email="inactivo@example.com", contrasena="clave123", activo=False)
+    user_factory(email="inactivo@example.com", contrasena="clave12345", activo=False)
 
     response = client.post(
         "/api/login",
-        json={"email": "inactivo@example.com", "contrasena": "clave123"},
+        json={"email": "inactivo@example.com", "contrasena": "clave12345"},
     )
 
     assert response.status_code == 403
@@ -102,11 +103,11 @@ def test_bienvenida_sin_sesion_redirige_a_login(client):
 
 
 def test_logout_cierra_sesion(client, user_factory):
-    user_factory(email="logout@example.com", contrasena="clave123")
+    user_factory(email="logout@example.com", contrasena="clave12345")
 
     login_response = client.post(
         "/api/login",
-        json={"email": "logout@example.com", "contrasena": "clave123"},
+        json={"email": "logout@example.com", "contrasena": "clave12345"},
     )
     assert login_response.status_code == 200
 
@@ -125,11 +126,11 @@ def test_logout_cierra_sesion(client, user_factory):
 
 
 def test_logout_sin_csrf_devuelve_403(client, user_factory):
-    user_factory(email="logout-nocsrf@example.com", contrasena="clave123")
+    user_factory(email="logout-nocsrf@example.com", contrasena="clave12345")
 
     login_response = client.post(
         "/api/login",
-        json={"email": "logout-nocsrf@example.com", "contrasena": "clave123"},
+        json={"email": "logout-nocsrf@example.com", "contrasena": "clave12345"},
     )
     assert login_response.status_code == 200
 
@@ -140,11 +141,11 @@ def test_logout_sin_csrf_devuelve_403(client, user_factory):
 
 
 def test_logout_con_csrf_invalido_devuelve_403(client, user_factory):
-    user_factory(email="logout-badcsrf@example.com", contrasena="clave123")
+    user_factory(email="logout-badcsrf@example.com", contrasena="clave12345")
 
     login_response = client.post(
         "/api/login",
-        json={"email": "logout-badcsrf@example.com", "contrasena": "clave123"},
+        json={"email": "logout-badcsrf@example.com", "contrasena": "clave12345"},
     )
     assert login_response.status_code == 200
 
@@ -162,12 +163,12 @@ def test_obtener_y_actualizar_perfil_usuario(client, user_factory):
         nombre="Sonia",
         apellidos="Mata",
         email="sonia@example.com",
-        contrasena="clave123",
+        contrasena="clave12345",
     )
 
     login_response = client.post(
         "/api/login",
-        json={"email": "sonia@example.com", "contrasena": "clave123"},
+        json={"email": "sonia@example.com", "contrasena": "clave12345"},
     )
     assert login_response.status_code == 200
 
@@ -196,7 +197,7 @@ def test_perfil_usuario_inactivo_devuelve_403(client, user_factory):
 
     login_response = client.post(
         "/api/login",
-        json={"email": user.email, "contrasena": "clave123"},
+        json={"email": user.email, "contrasena": "clave12345"},
     )
     assert login_response.status_code == 403
 
@@ -207,12 +208,12 @@ def test_perfil_usuario_inactivo_devuelve_403(client, user_factory):
 
 
 def test_query_param_usuario_id_no_permite_suplantacion(client, user_factory):
-    user1 = user_factory(email="user1@example.com", contrasena="clave123")
+    user1 = user_factory(email="user1@example.com", contrasena="clave12345")
     user2 = user_factory(email="user2@example.com", contrasena="clave456")
 
     login_response = client.post(
         "/api/login",
-        json={"email": user1.email, "contrasena": "clave123"},
+        json={"email": user1.email, "contrasena": "clave12345"},
     )
     assert login_response.status_code == 200
 
@@ -258,7 +259,7 @@ def test_admin_sin_permisos_no_puede_listar(client, user_factory):
 
     login_response = client.post(
         "/api/login",
-        json={"email": user.email, "contrasena": "clave123"},
+        json={"email": user.email, "contrasena": "clave12345"},
     )
     assert login_response.status_code == 200
 
@@ -300,7 +301,7 @@ def test_admin_puede_listar_crear_actualizar_y_eliminar(client, user_factory):
             "apellidos": "Usuario",
             "email": "nuevo-admin@example.com",
             "rol": "vendedor",
-            "contrasena": "clave123",
+            "contrasena": "clave12345",
         },
     )
     assert create_response.status_code == 201

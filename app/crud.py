@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from fastapi import HTTPException
 from app.models import Usuario, RolUsuario
 from app.schemas import UsuarioCreate, UsuarioUpdate, UsuarioAdminUpdate
 from app.security import hash_password, verify_password
@@ -39,6 +40,7 @@ def crear_usuario(db: Session, usuario: UsuarioCreate) -> Usuario:
         codigo_postal=usuario.codigo_postal,
         contrasena_hash=hash_password(usuario.contrasena),
         rol=rol_db,
+        activo=getattr(usuario, "activo", True),
     )
     db.add(usuario_bd)
     try:
@@ -62,7 +64,7 @@ def obtener_usuario_por_email(db: Session, email: str) -> Optional[Usuario]:
 
 def obtener_todos_usuarios(db: Session, skip: int = 0, limit: int = 100) -> List[Usuario]:
     """Obtiene todos los usuarios con paginación"""
-    return db.query(Usuario).offset(skip).limit(limit).all()
+    return db.query(Usuario).order_by(Usuario.id).offset(skip).limit(limit).all()
 
 
 def actualizar_usuario(db: Session, usuario_id: int, datos_actualizacion: UsuarioUpdate) -> Optional[Usuario]:
@@ -76,11 +78,19 @@ def actualizar_usuario(db: Session, usuario_id: int, datos_actualizacion: Usuari
     
     # Actualizar solo los campos permitidos
     datos_dict = datos_actualizacion.model_dump(exclude_unset=True)
+    if "email" in datos_dict:
+        existente = obtener_usuario_por_email(db, datos_dict["email"])
+        if existente and existente.id != usuario.id:
+            raise HTTPException(status_code=400, detail="El email ya está registrado")
     for campo, valor in datos_dict.items():
-        if valor is not None:
+        if valor is not None or campo in {"telefono", "direccion", "ciudad", "codigo_postal"}:
             setattr(usuario, campo, valor)
     
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Los datos no son válidos o el email ya está registrado")
     db.refresh(usuario)
     return usuario
 
@@ -95,13 +105,21 @@ def actualizar_usuario_admin(db: Session, usuario_id: int, datos_actualizacion: 
         return None
     
     datos_dict = datos_actualizacion.model_dump(exclude_unset=True)
+    if "email" in datos_dict:
+        existente = obtener_usuario_por_email(db, datos_dict["email"])
+        if existente and existente.id != usuario.id:
+            raise HTTPException(status_code=400, detail="El email ya está registrado")
     for campo, valor in datos_dict.items():
-        if valor is not None:
+        if valor is not None or campo in {"telefono", "direccion", "ciudad", "codigo_postal"}:
             if campo == "rol" and isinstance(valor, str):
                 valor = RolUsuario(valor.lower())
             setattr(usuario, campo, valor)
     
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Los datos no son válidos o el email ya está registrado")
     db.refresh(usuario)
     return usuario
 
@@ -140,8 +158,16 @@ def eliminar_usuario(db: Session, usuario_id: int) -> bool:
     if not usuario:
         return False
     
+    from app.models import RestablecimientoContrasena
+    if usuario.tiendas:
+        raise HTTPException(status_code=409, detail="Reasigna o elimina las tiendas antes de eliminar la cuenta")
+    db.query(RestablecimientoContrasena).filter_by(usuario_id=usuario_id).delete()
     db.delete(usuario)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="El usuario tiene datos relacionados que impiden eliminarlo")
     return True
 
 
