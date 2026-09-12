@@ -11,6 +11,7 @@
 
         <div class="success-message" id="successMessage">✓ Cuenta creada exitosamente</div>
 
+        <p class="note">Completa tus datos de contacto y dirección para utilizarlos al realizar una compra.</p>
         <form id="registroForm">
             <div class="form-row">
                 <div class="form-group">
@@ -20,7 +21,8 @@
                 </div>
                 <div class="form-group">
                     <label for="telefono">Teléfono</label>
-                    <input type="tel" id="telefono" name="telefono">
+                    <input type="tel" id="telefono" name="telefono" required>
+                    <div class="error-message" id="error_telefono"></div>
                 </div>
             </div>
 
@@ -39,17 +41,20 @@
 
             <div class="form-group">
                 <label for="direccion">Dirección</label>
-                <input type="text" id="direccion" name="direccion">
+                <input type="text" id="direccion" name="direccion" required>
+                <div class="error-message" id="error_direccion"></div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label for="ciudad">Ciudad</label>
-                    <input type="text" id="ciudad" name="ciudad">
+                    <input type="text" id="ciudad" name="ciudad" required>
+                    <div class="error-message" id="error_ciudad"></div>
                 </div>
                 <div class="form-group">
                     <label for="codigo_postal">Código Postal</label>
-                    <input type="text" id="codigo_postal" name="codigo_postal">
+                    <input type="text" id="codigo_postal" name="codigo_postal" required>
+                    <div class="error-message" id="error_codigo_postal"></div>
                 </div>
             </div>
 
@@ -65,7 +70,7 @@
 
             <div class="form-group">
                 <label for="contrasena">Contraseña</label>
-                <input type="password" id="contrasena" name="contrasena" required>
+                <input type="password" id="contrasena" name="contrasena" minlength="8" maxlength="128" required>
                 <div class="error-message" id="errorContrasena"></div>
             </div>
 

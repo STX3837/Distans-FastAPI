@@ -82,6 +82,16 @@ class Usuario(Base):
     pedidos = relationship("Pedido", back_populates="usuario", cascade="all, delete-orphan")
 
 
+class RestablecimientoContrasena(Base):
+    __tablename__ = "restablecimientos_contrasena"
+
+    token_hash = Column(String(64), primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    email = Column(String, nullable=False)
+    contrasena_anterior_hash = Column(String, nullable=False)
+    fecha_expiracion = Column(DateTime, nullable=False)
+
+
 class Ubicacion(Base):
     __tablename__ = "ubicaciones"
     

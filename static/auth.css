@@ -1,0 +1,347 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f0f0f0;
+    min-height: 100vh;
+    padding-top: 74px;
+}
+
+.topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 74px;
+    background: #ffffff;
+    border-bottom: 1px solid #e8e8e8;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px 0 22px;
+    z-index: 1000;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: #000;
+}
+
+.brand-mark {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brand-name {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 40px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f2f6b;
+    background: #e8f0ff;
+    border: 1px solid #bcd0f5;
+    border-radius: 999px;
+    padding: 8px 12px;
+    line-height: 1;
+}
+
+.topbar-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 3px;
+    background: #4caf50;
+    color: #fff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid #3d8f42;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.topbar-button.active {
+    background: #3f9b44;
+}
+
+.topbar-logout {
+    background: #1e4fa8;
+    border-color: #173f87;
+    cursor: pointer;
+}
+
+.topbar-logout:hover {
+    background: #173f87;
+}
+
+.icon-button {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #1f3e8a;
+    text-decoration: none;
+}
+
+.page-wrap {
+    min-height: calc(100vh - 74px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.hero-wrap {
+    min-height: calc(100vh - 74px);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 24px;
+}
+
+.hero-card,
+.card {
+    background: #b3ff99;
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.hero-card {
+    margin-top: 24px;
+    max-width: 520px;
+    width: 100%;
+    padding: 32px 36px;
+    text-align: center;
+}
+
+.hero-card h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 34px;
+    color: #000;
+    margin-bottom: 10px;
+}
+
+.hero-card p {
+    color: #222;
+    margin-bottom: 18px;
+}
+
+.cta-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 3px;
+    background: #4caf50;
+    border: 1px solid #3d8f42;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.card-registro {
+    width: 100%;
+    max-width: 450px;
+    padding: 40px;
+}
+
+.header-block {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.header-block h1,
+.card-login h1,
+.welcome-card h1 {
+    color: #000;
+    font-family: Georgia, 'Times New Roman', serif;
+}
+
+.header-block h1 {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.form-row .form-group {
+    margin-bottom: 0;
+}
+
+label {
+    display: block;
+    margin-bottom: 6px;
+    color: #000;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+input,
+select {
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 5px;
+    font-size: 13px;
+    background: #ffffff;
+    font-family: Arial, sans-serif;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+.button {
+    width: 100%;
+    padding: 12px;
+    background: #4caf50;
+    color: #fff;
+    border: 1px solid #3d8f42;
+    border-radius: 5px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+.card-registro .button {
+    background: #b3ff99;
+    color: #000;
+    border: 2px solid #000;
+    margin-top: 15px;
+}
+
+.card-registro .button:hover {
+    background: #9aff7f;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.card-login {
+    width: 100%;
+    max-width: 420px;
+    padding: 38px;
+}
+
+.card-login h1 {
+    text-align: center;
+    font-size: 32px;
+    margin-bottom: 28px;
+}
+
+.field {
+    margin-bottom: 18px;
+}
+
+.note {
+    margin-top: 16px;
+    text-align: center;
+    color: #222;
+    font-size: 14px;
+}
+
+.note a {
+    color: #000;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.error-message {
+    color: #d32f2f;
+    font-size: 11px;
+    margin-top: 4px;
+    display: none;
+}
+
+.login-error {
+    margin-top: 14px;
+    color: #b00020;
+    font-size: 14px;
+    text-align: center;
+    min-height: 18px;
+    display: block;
+}
+
+.success-message {
+    background: #81c784;
+    color: #fff;
+    padding: 12px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    display: none;
+    font-size: 14px;
+    text-align: center;
+}
+
+.welcome-card {
+    width: 100%;
+    max-width: 540px;
+    padding: 44px 32px;
+    text-align: center;
+}
+
+.welcome-card h1 {
+    font-size: 48px;
+    line-height: 1.1;
+}
+
+@media (max-width: 720px) {
+    .brand-name {
+        font-size: 30px;
+    }
+
+    .topbar-actions {
+        gap: 8px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.account-card { width: 100%; max-width: 650px; padding: 32px; }
+.admin-card { width: 100%; max-width: 1100px; padding: 32px; }
+.account-card h2, .admin-card h2 { margin: 24px 0 16px; }
+.table-scroll { overflow-x: auto; margin-bottom: 16px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
+td button { margin-right: 8px; }
+.topbar-actions { flex-wrap: wrap; }
+
+.home-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; }

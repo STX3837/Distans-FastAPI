@@ -2,12 +2,12 @@ from passlib.context import CryptContext
 
 # PBKDF2-SHA256 es el esquema de hash elegido para contraseñas.
 # Evita dependencia directa de bcrypt y mantiene un algoritmo robusto y ampliamente soportado.
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto", pbkdf2_sha256__default_rounds=600_000)
 
 
 def hash_password(password: str) -> str:
     """
-    Cifra una contraseña en texto plano.
+    Genera un hash de contraseña con salt aleatoria.
     Según RNF02: La contraseña debe almacenarse de forma cifrada y segura.
     
     Args:

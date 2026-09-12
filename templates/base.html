@@ -8,7 +8,7 @@
 </head>
 <body>
     <header class="topbar">
-        <a class="brand" href="/registro" aria-label="Distans">
+        <a class="brand" href="/" aria-label="Distans: inicio">
             <div class="brand-mark" aria-hidden="true">
                 <svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <rect x="8" y="18" width="30" height="30" rx="4" fill="#F3FAFF" stroke="#4AA3DF" stroke-width="2"/>
@@ -25,6 +25,8 @@
 
         <div class="topbar-actions">
             {% if user_name %}
+            <a class="topbar-button" href="/usuarios/cuenta">Mi cuenta</a>
+            {% if es_admin %}<a class="topbar-button" href="/admin/usuarios/panel">Usuarios</a>{% endif %}
             <span class="user-name">{{ user_name }}</span>
             <button class="topbar-button topbar-logout" type="button" onclick="cerrarSesion()">Cerrar sesión</button>
             {% else %}

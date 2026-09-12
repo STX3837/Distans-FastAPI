@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Gestión de usuarios - Distans{% endblock %}
+{% block content %}
+<main class="page-wrap"><section class="card admin-card"><h1>Gestión de usuarios</h1>
+<p id="adminMensaje" role="status" aria-live="polite"></p>
+<div class="table-scroll"><table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="usuariosTabla"></tbody></table></div>
+<button type="button" id="anterior">Anterior</button> <span id="pagina"></span> <button type="button" id="siguiente">Siguiente</button>
+<h2 id="formTitle">Crear usuario</h2><form id="adminForm"><input type="hidden" id="usuario_id"><div class="field"><label for="nombre">Nombre</label><input id="nombre" name="nombre" type="text" required></div>
+<div class="field"><label for="apellidos">Apellidos</label><input id="apellidos" name="apellidos" type="text" required></div>
+<div class="field"><label for="email">Correo electrónico</label><input id="email" name="email" type="email" required></div>
+<div class="field"><label for="telefono">Teléfono</label><input id="telefono" name="telefono" type="tel"></div>
+<div class="field"><label for="direccion">Dirección</label><input id="direccion" name="direccion" type="text"></div>
+<div class="field"><label for="ciudad">Ciudad</label><input id="ciudad" name="ciudad" type="text"></div>
+<div class="field"><label for="codigo_postal">Código postal</label><input id="codigo_postal" name="codigo_postal" type="text"></div>
+<div class="field"><label for="rol">Rol</label><select id="rol" name="rol"><option value="comprador">Comprador</option><option value="vendedor">Vendedor</option><option value="admin">Administrador</option></select></div>
+<div class="field"><label for="activo"><input id="activo" type="checkbox" checked> Cuenta activa</label></div>
+<div class="field" id="passwordField"><label for="contrasena">Contraseña inicial (8–128 caracteres)</label><input id="contrasena" name="contrasena" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></div>
+<button class="button" type="submit">Guardar usuario</button> <button id="cancelar" type="button">Nuevo usuario / cancelar edición</button></form>
+</section></main>
+{% endblock %}
+{% block scripts %}<script src="/static/cuenta.js"></script>{% endblock %}

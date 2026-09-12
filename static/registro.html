@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - Distans</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .login-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 14px;
+        }
+        
+        .info-text {
+            background: #e7f3ff;
+            color: #0066cc;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 Registro</h1>
+            <p>Distans - Sistema de Gestión</p>
+        </div>
+        
+        <div class="success-message" id="successMessage">
+            ✓ Cuenta creada exitosamente
+        </div>
+        
+        <div class="info-text">
+            Por favor, complete todos los campos para registrarse en el sistema.
+        </div>
+        
+        <form id="registroForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="nombre">Nombre *</label>
+                    <input type="text" id="nombre" name="nombre" required>
+                    <div class="error-message" id="errorNombre"></div>
+                </div>
+                <div class="form-group">
+                    <label for="apellidos">Apellidos *</label>
+                    <input type="text" id="apellidos" name="apellidos" required>
+                    <div class="error-message" id="errorApellidos"></div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" required>
+                <div class="error-message" id="errorEmail"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="telefono">Teléfono</label>
+                <input type="tel" id="telefono" name="telefono" placeholder="+34 666 777 888">
+                <div class="error-message" id="errorTelefono"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="rol">Rol *</label>
+                <select id="rol" name="rol" required>
+                    <option value="">Selecciona un rol</option>
+                    <option value="Comprador">Comprador</option>
+                    <option value="Vendedor">Vendedor</option>
+                </select>
+                <div class="error-message" id="errorRol"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="ciudad">Ciudad</label>
+                <input type="text" id="ciudad" name="ciudad" placeholder="Madrid">
+                <div class="error-message" id="errorCiudad"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="direccion">Dirección</label>
+                <input type="text" id="direccion" name="direccion" placeholder="Calle Principal 123">
+                <div class="error-message" id="errorDireccion"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="codigo_postal">Código Postal</label>
+                <input type="text" id="codigo_postal" name="codigo_postal" placeholder="28001">
+                <div class="error-message" id="errorCodigoPostal"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="contrasena">Contraseña *</label>
+                <input type="password" id="contrasena" name="contrasena" minlength="8" maxlength="128" required>
+                <div class="error-message" id="errorContrasena"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="contrasena_confirmacion">Confirmar Contraseña *</label>
+                <input type="password" id="contrasena_confirmacion" name="contrasena_confirmacion" required>
+                <div class="error-message" id="errorConfirmacion"></div>
+            </div>
+            
+            <button type="submit" class="button">Registrarse</button>
+        </form>
+        
+        <div class="login-link">
+            ¿Ya tienes cuenta? <a href="/login">Inicia sesión aquí</a>
+        </div>
+    </div>
+    
+    <script>
+        const form = document.getElementById('registroForm');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Limpiar mensajes de error
+            document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+            
+            const nombre = document.getElementById('nombre').value.trim();
+            const apellidos = document.getElementById('apellidos').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const telefono = document.getElementById('telefono').value.trim();
+            let rol = document.getElementById('rol').value;
+            if (rol) rol = rol.toLowerCase();
+            const ciudad = document.getElementById('ciudad').value.trim();
+            const direccion = document.getElementById('direccion').value.trim();
+            const codigo_postal = document.getElementById('codigo_postal').value.trim();
+            const contrasena = document.getElementById('contrasena').value;
+            const contrasena_confirmacion = document.getElementById('contrasena_confirmacion').value;
+            
+            let tieneErrores = false;
+            
+            // Validaciones
+            if (!nombre) {
+                document.getElementById('errorNombre').textContent = 'El nombre es requerido';
+                document.getElementById('errorNombre').style.display = 'block';
+                tieneErrores = true;
+            }
+            
+            if (!apellidos) {
+                document.getElementById('errorApellidos').textContent = 'Los apellidos son requeridos';
+                document.getElementById('errorApellidos').style.display = 'block';
+                tieneErrores = true;
+            }
+            
+            if (!email) {
+                document.getElementById('errorEmail').textContent = 'El email es requerido';
+                document.getElementById('errorEmail').style.display = 'block';
+                tieneErrores = true;
+            }
+            
+            if (!rol) {
+                document.getElementById('errorRol').textContent = 'Debe seleccionar un rol';
+                document.getElementById('errorRol').style.display = 'block';
+                tieneErrores = true;
+            }
+            
+            if (!contrasena) {
+                document.getElementById('errorContrasena').textContent = 'La contraseña es requerida';
+                document.getElementById('errorContrasena').style.display = 'block';
+                tieneErrores = true;
+            }
+            
+            if (contrasena !== contrasena_confirmacion) {
+                document.getElementById('errorConfirmacion').textContent = 'Las contraseñas no coinciden';
+                document.getElementById('errorConfirmacion').style.display = 'block';
+                tieneErrores = true;
+            }
+            
+            if (contrasena && contrasena.length < 8) {
+                document.getElementById('errorContrasena').textContent = 'La contraseña debe tener al menos 6 caracteres';
+                document.getElementById('errorContrasena').style.display = 'block';
+                tieneErrores = true;
+            }
+            
+            if (tieneErrores) return;
+            
+            // Enviar datos al servidor
+            try {
+                const response = await fetch('/api/registro', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        nombre,
+                        apellidos,
+                        email,
+                        telefono: telefono || null,
+                        rol,
+                        ciudad: ciudad || null,
+                        direccion: direccion || null,
+                        codigo_postal: codigo_postal || null,
+                        contrasena
+                    })
+                });
+                
+                if (response.ok) {
+                    document.getElementById('successMessage').style.display = 'block';
+                    form.reset();
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else if (response.status === 400) {
+                    const data = await response.json();
+                    if (data.detail && data.detail.includes('email')) {
+                        document.getElementById('errorEmail').textContent = 'Este email ya está registrado';
+                        document.getElementById('errorEmail').style.display = 'block';
+                    } else {
+                        alert('Error: ' + (data.detail || 'No se pudo registrar'));
+                    }
+                } else {
+                    alert('Error al registrar. Intenta nuevamente.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión. Intenta nuevamente.');
+            }
+        });
+    </script>
+</body>
+</html>

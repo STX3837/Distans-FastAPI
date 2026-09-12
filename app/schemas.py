@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from datetime import datetime
 from typing import Optional, List
 from enum import Enum
@@ -46,35 +46,79 @@ class MetodoPago(str, Enum):
 
 class UsuarioBase(BaseModel):
     """Campos básicos de usuario"""
-    nombre: str
-    apellidos: str
+    nombre: str = Field(min_length=1)
+    apellidos: str = Field(min_length=1)
     email: EmailStr
     telefono: Optional[str] = None
     direccion: Optional[str] = None
     ciudad: Optional[str] = None
     codigo_postal: Optional[str] = None
 
+    @field_validator("nombre", "apellidos", "email", mode="before")
+    @classmethod
+    def validar_identidad(cls, value):
+        if value is None or not str(value).strip():
+            raise ValueError("Este campo no puede estar vacío")
+        return str(value).strip()
+
 
 class UsuarioCreate(UsuarioBase):
     """Schema para crear un usuario con contraseña"""
-    contrasena: str  # Contraseña en texto plano
+    contrasena: str = Field(min_length=8, max_length=128)  # Contraseña en texto plano
     rol: Optional[RolUsuario] = RolUsuario.COMPRADOR  # Rol por defecto: Comprador
+
+
+class UsuarioRegistro(UsuarioCreate):
+    """RF27: datos de contacto y dirección obligatorios en el registro público."""
+    telefono: str = Field(min_length=1)
+    direccion: str = Field(min_length=1)
+    ciudad: str = Field(min_length=1)
+    codigo_postal: str = Field(min_length=1)
+
+    @field_validator("telefono", "direccion", "ciudad", "codigo_postal", mode="before")
+    @classmethod
+    def validar_datos_comprador(cls, value):
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("Este dato del comprador es obligatorio")
+        return value.strip()
+
+
+class DatosCompradorPago(UsuarioBase):
+    """Datos de la cuenta reutilizables al completar el pago; no incluye credenciales."""
+    telefono: str = Field(min_length=1)
+    direccion: str = Field(min_length=1)
+    ciudad: str = Field(min_length=1)
+    codigo_postal: str = Field(min_length=1)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UsuarioAdminCreate(UsuarioCreate):
+    activo: bool = True
 
 
 class UsuarioUpdate(BaseModel):
     """Schema para actualizar datos del usuario - RF28"""
     nombre: Optional[str] = None
     apellidos: Optional[str] = None
+    email: Optional[EmailStr] = None
     telefono: Optional[str] = None
     direccion: Optional[str] = None
     ciudad: Optional[str] = None
     codigo_postal: Optional[str] = None
 
+    @field_validator("nombre", "apellidos", "email", mode="before")
+    @classmethod
+    def validar_identidad(cls, value):
+        if value is None or not str(value).strip():
+            raise ValueError("Este campo no puede estar vacío")
+        return str(value).strip()
+
 
 class UsuarioCambiarContrasena(BaseModel):
     """Schema para cambiar contraseña"""
     contrasena_actual: str
-    contrasena_nueva: str
+    contrasena_nueva: str = Field(min_length=8, max_length=128)
 
 
 class UsuarioResponse(UsuarioBase):
@@ -100,6 +144,13 @@ class UsuarioAdminUpdate(BaseModel):
     codigo_postal: Optional[str] = None
     rol: Optional[RolUsuario] = None
     activo: Optional[bool] = None
+
+    @field_validator("nombre", "apellidos", "email", mode="before")
+    @classmethod
+    def validar_identidad(cls, value):
+        if value is None or not str(value).strip():
+            raise ValueError("Este campo no puede estar vacío")
+        return str(value).strip()
 
 
 class UsuarioAdminResponse(UsuarioBase):

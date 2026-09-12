@@ -12,6 +12,12 @@ services:
       - "5434:5432" 
     restart: on-failure
 
+  mailpit:
+    image: axllent/mailpit:v1.27.4
+    ports:
+      - "127.0.0.1:8025:8025"
+    restart: unless-stopped
+
   web:
     build: .
     container_name: fastapi_web
@@ -21,6 +27,8 @@ services:
       - .:/app
     ports:
       - "8001:8000"
+    env_file:
+      - .env
     depends_on:
       - db
     environment:
