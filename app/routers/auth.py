@@ -1,7 +1,7 @@
 import secrets
 import hashlib
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Form, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, EmailStr, Field
@@ -29,10 +29,10 @@ def _template_context(request: Request, active_route: str = "", user_name: str |
     }
 
 
-def _validar_csrf(request: Request) -> None:
+def _validar_csrf(request: Request, token_formulario: str | None = None) -> None:
     """Valida token CSRF con patrón double-submit cookie."""
     session_token = request.session.get("csrf_token")
-    header_token = request.headers.get("x-csrf-token")
+    header_token = request.headers.get("x-csrf-token") or token_formulario
     cookie_token = request.cookies.get("csrf_token")
 
     if not session_token or not header_token or not cookie_token:
@@ -49,13 +49,20 @@ def _validar_csrf(request: Request) -> None:
 
 
 @router.get("/", response_class=HTMLResponse)
-def pagina_inicio(request: Request):
-    """Página de inicio con enlaces al registro, login y recuperación."""
-    return templates.TemplateResponse(
-        request=request,
-        name="inicio.html",
-        context=_template_context(request, active_route="/"),
-    )
+def pagina_acceso(request: Request):
+    return templates.TemplateResponse(request=request, name="acceso.html", context={
+        "csrf_token": request.session.get("csrf_token", ""),
+    })
+
+
+@router.post("/invitado")
+def entrar_invitado(request: Request, csrf_token: str = Form("")):
+    if request.session.get("usuario"):
+        _validar_csrf(request, csrf_token)
+    request.session.clear()
+    response = RedirectResponse(url="/inicio", status_code=303)
+    response.delete_cookie("csrf_token")
+    return response
 
 
 @router.get("/registro", response_class=HTMLResponse)
@@ -174,7 +181,7 @@ def pagina_login(request: Request, db: Session = Depends(get_db)):
                 raise
             request.session.clear()
         else:
-            return RedirectResponse(url="/bienvenida", status_code=status.HTTP_303_SEE_OTHER)
+            return RedirectResponse(url="/inicio", status_code=status.HTTP_303_SEE_OTHER)
 
     return templates.TemplateResponse(
         request=request,
@@ -188,7 +195,5 @@ def pagina_bienvenida(request: Request, db: Session = Depends(get_db)):
     from app.routers.users import _obtener_usuario_actual
     if not request.session.get("usuario"):
         return RedirectResponse(url="/login", status_code=303)
-    usuario = _obtener_usuario_actual(request, db)
-    return templates.TemplateResponse(request=request, name="bienvenida.html", context={
-        "user_name": usuario.nombre, "es_admin": usuario.rol.value == "admin",
-    })
+    _obtener_usuario_actual(request, db)
+    return RedirectResponse(url="/inicio", status_code=303)

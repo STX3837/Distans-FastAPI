@@ -1,15 +1,61 @@
 {% extends "base.html" %}
 {% block title %}Inicio - Distans{% endblock %}
-{% block content %}
-<main class="hero-wrap">
-    <section class="hero-card">
-        <h1>Bienvenido a Distans</h1>
-        <p>Accede a tu cuenta o regístrate como comprador o vendedor.</p>
-        <nav class="home-actions" aria-label="Acceso a la cuenta">
-            <a class="cta-link" href="/login">Iniciar sesión</a>
-            <a class="cta-link" href="/registro">Crear una cuenta</a>
-            <a href="/recuperar-contrasena">Recuperar contraseña</a>
-        </nav>
-    </section>
-</main>
+{% block styles %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"><link rel="stylesheet" href="/static/catalogo.css">{% endblock %}
+{% block header %}
+<header class="market-header">
+<div class="market-top">        <a class="brand" href="/inicio" aria-label="Distans: inicio">
+            <div class="brand-mark" aria-hidden="true">
+                <svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="8" y="18" width="30" height="30" rx="4" fill="#F3FAFF" stroke="#4AA3DF" stroke-width="2"/>
+                    <path d="M12 24H34" stroke="#4AA3DF" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M14 30H32" stroke="#4AA3DF" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M18 18L18 14C18 11.8 19.8 10 22 10H24C26.2 10 28 11.8 28 14V18" stroke="#4AA3DF" stroke-width="2"/>
+                    <circle cx="24" cy="42" r="3" fill="#4AA3DF"/>
+                    <path d="M24 52C24 52 33 43.9 33 37.1C33 32.1 29 28 24 28C19 28 15 32.1 15 37.1C15 43.9 24 52 24 52Z" fill="#F3FAFF" stroke="#F0A43A" stroke-width="2"/>
+                    <circle cx="24" cy="37" r="2.6" fill="#4AA3DF"/>
+                </svg>
+            </div>
+            <span class="brand-name">DISTANS</span>
+        </a>
+
+
+<button type="button" class="location-button" id="selectLocation">Seleccionar ubicación</button>
+<label class="radius-control"><span class="sr-only">Radio de búsqueda</span><select id="searchRadius"><option value="0">Radio</option><option value="500">500 m</option><option value="1000">1 km</option><option value="2000">2 km</option><option value="5000">5 km</option><option value="10000">10 km</option></select></label>
+<div class="market-account">{% if user_name %}<a class="account-button" href="/usuarios/cuenta" aria-label="Mi cuenta de {{ user_name }}">Mi cuenta</a>{% if es_admin %}<a class="account-button" href="/admin/usuarios/panel">Usuarios</a>{% endif %}<button class="account-button" type="button" onclick="cerrarSesion()">Cerrar sesión</button>{% else %}<a class="account-button" href="/registro">Registrarse</a><a class="account-button" href="/login">Iniciar sesión</a>{% endif %}
+<a class="market-icon" href="/usuarios/cuenta" aria-label="Mi cuenta"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="16" cy="9" r="4"/><path d="M6 28c0-12 20-12 20 0"/></svg></a>
+<a class="market-icon cart-icon" href="/login" aria-label="Carrito"><svg viewBox="0 0 40 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 2l8 3 5 22h18l6-19H10M14 14h22M16 21h18M20 8l2 18M30 8l-2 18"/><circle cx="17" cy="32" r="2"/><circle cx="31" cy="32" r="2"/></svg></a></div>
+</div>
+<nav class="market-tabs" aria-label="Vistas de inicio"><button type="button" data-tab="mapa" aria-selected="true">MAPA</button><button type="button" data-tab="productos" aria-selected="false">PRODUCTOS</button><button type="button" data-tab="tiendas" aria-selected="false">TIENDAS</button></nav>
+</header>
 {% endblock %}
+{% block content %}
+<main class="market-page" data-default-tab="{{ 'productos' if es_busqueda else 'mapa' }}">
+<section id="panel-mapa" class="market-panel" aria-label="Mapa de tiendas"><div id="productsMap" aria-label="Mapa interactivo de tiendas"></div><p id="mapStatus" class="map-status" role="status" aria-live="polite"></p><noscript>Activa JavaScript para utilizar el mapa. Puedes consultar los productos y tiendas a continuación.</noscript></section>
+<section id="panel-productos" class="market-panel catalog-content" aria-labelledby="resultadosTitulo"><h1>Descubre lo que tienes cerca</h1>        <form class="search-form" action="/inicio" method="get" role="search">
+            <div><label for="busqueda">¿Qué buscas?</label><input id="busqueda" name="q" value="{{ q }}" maxlength="120" placeholder="Producto, marca o tienda"></div>
+            <div><label for="categoria">Categoría</label><select id="categoria" name="categoria"><option value="">Todas las categorías</option>{% for categoria in categorias %}<option value="{{ categoria.value }}" {% if categoria.value == categoria_seleccionada %}selected{% endif %}>{{ categoria.value }}</option>{% endfor %}</select></div>
+            <label class="featured-filter"><input type="checkbox" name="destacados" value="true" {% if destacados %}checked{% endif %}> Solo destacados</label>
+            <button type="submit" class="search-button">Buscar</button>
+        </form>
+<div class="results-heading"><div><h2 id="resultadosTitulo">{{ titulo_productos }}</h2><p>{{ total }} productos · Página {{ pagina }}{% if paginas %} de {{ paginas }}{% endif %}</p></div><a href="/inicio?q=">Ver todos los productos</a></div>
+                <div class="product-grid">
+                {% for producto in productos %}
+                    <article class="product-card" data-product-shop="{{ producto.tienda.id }}" id="producto-{{ producto.id }}">
+                        <div class="product-image">{% if producto.imagen %}<img src="{{ producto.imagen }}" alt="{{ producto.nombre }}" loading="lazy" onerror="this.hidden=true">{% else %}<span aria-hidden="true">🛍</span>{% endif %}{% if producto.destacado %}<span class="featured-badge">Destacado</span>{% endif %}</div>
+                        <div class="product-body"><p class="product-category">{{ producto.categoria }}</p><h3>{{ producto.nombre }}</h3>{% if producto.descripcion %}<p class="product-description">{{ producto.descripcion }}</p>{% endif %}
+                        <p class="product-price">{% if producto.precio_oferta is not none %}{{ '%.2f'|format(producto.precio_oferta) }} € <del>{{ '%.2f'|format(producto.precio) }} €</del>{% else %}{{ '%.2f'|format(producto.precio) }} €{% endif %}</p>
+                        <p class="shop-name">{{ producto.tienda.nombre }}</p>{% if producto.tienda.direccion %}<p class="shop-address">{{ producto.tienda.direccion }}</p>{% endif %}{% if producto.stock <= 0 %}<p class="stock-note">Agotado</p>{% endif %}
+                        {% if producto.tienda.latitud is not none %}<button class="map-link" type="button" data-shop-id="{{ producto.tienda.id }}">Ver tienda en el mapa</button>{% else %}<p class="location-missing">Ubicación de la tienda pendiente</p>{% endif %}
+                        </div>
+                    </article>
+                {% else %}<div class="empty-catalog"><h3>{{ 'No encontramos productos' if es_busqueda else 'Todavía no hay productos publicados' }}</h3><p>{{ 'Prueba otro término o categoría.' if es_busqueda else 'Los productos disponibles aparecerán aquí cuando se publiquen.' }}</p></div>{% endfor %}
+                </div>
+                <nav class="pagination" aria-label="Páginas de productos">{% if anterior %}<a href="{{ anterior }}">Anterior</a>{% endif %}{% if siguiente %}<a href="{{ siguiente }}">Siguiente</a>{% endif %}</nav>
+
+</section>
+<section id="panel-tiendas" class="market-panel catalog-content" aria-labelledby="tiendasTitulo"><h1 id="tiendasTitulo">Tiendas cerca de ti</h1><div class="store-grid">{% for tienda in productos|map(attribute='tienda')|unique(attribute='id') %}<article class="store-card" data-store-id="{{ tienda.id }}"><h2>{{ tienda.nombre }}</h2><p>{{ tienda.direccion or tienda.ubicacion or 'Dirección pendiente' }}</p>{% if tienda.latitud is not none %}<button class="map-link" data-shop-id="{{ tienda.id }}" type="button">Ver tienda en el mapa</button>{% else %}<p>Ubicación de la tienda pendiente</p>{% endif %}</article>{% else %}<p>No hay tiendas para estos resultados.</p>{% endfor %}</div></section>
+</main>
+<dialog id="locationDialog"><h2>Seleccionar ubicación</h2><p>Elige el centro desde el que buscar tiendas.</p><button type="button" id="pickOnMap">Seleccionar en el mapa</button><button type="button" id="useGeolocation">Usar mi ubicación</button><button type="button" id="closeLocation">Cancelar</button><p id="locationError" role="status"></p></dialog>
+<script id="mapProducts" type="application/json">{{ productos|tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js"></script><script src="/static/catalogo.js"></script>{% endblock %}
