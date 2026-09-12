@@ -53,7 +53,7 @@ function iniciarLogin() {
                 return;
             }
 
-            window.location.href = '/bienvenida';
+            window.location.href = '/inicio';
         } catch (error) {
             console.error('Error de login:', error);
             loginError.textContent = 'Error de conexión. Inténtalo de nuevo.';

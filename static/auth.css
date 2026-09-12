@@ -345,3 +345,5 @@ td button { margin-right: 8px; }
 .topbar-actions { flex-wrap: wrap; }
 
 .home-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; }
+
+.guest-button { border: 0; font: inherit; cursor: pointer; }

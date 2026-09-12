@@ -67,7 +67,7 @@ def test_login_exitoso_y_bienvenida_con_sesion(client, user_factory):
 
     welcome_response = client.get("/bienvenida")
     assert welcome_response.status_code == 200
-    assert "¡Bienvenido!" in welcome_response.text
+    assert "Descubre lo que tienes cerca" in welcome_response.text
     assert "Carlos" in welcome_response.text
 
 

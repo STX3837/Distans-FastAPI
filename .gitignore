@@ -20,3 +20,5 @@ db.sqlite3
 .vscode/
 .idea/
 *.swp
+# Capturas locales de verificación
+/artifacts/

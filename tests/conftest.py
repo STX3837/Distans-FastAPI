@@ -12,7 +12,7 @@ from app import crud
 from app.database import get_db
 from app.models import Base, Usuario, RestablecimientoContrasena
 from app.password_reset import router as password_reset_router
-from app.routers import auth, users
+from app.routers import auth, users, catalogo
 from app.schemas import RolUsuario as RolUsuarioSchema
 from app.schemas import UsuarioCreate
 
@@ -45,6 +45,7 @@ def app(db_session: Session) -> FastAPI:
         yield db_session
 
     test_app.dependency_overrides[get_db] = override_get_db
+    test_app.include_router(catalogo.router)
     test_app.include_router(auth.router)
     test_app.include_router(password_reset_router)
     test_app.include_router(users.router)

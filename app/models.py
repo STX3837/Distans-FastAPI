@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean, Float, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean, Float, ForeignKey, Text, CheckConstraint
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 from geoalchemy2 import Geometry
@@ -127,6 +127,20 @@ class Tienda(Base):
     # Relaciones
     vendedor = relationship("Usuario", back_populates="tiendas", foreign_keys=[vendedor_id])
     productos = relationship("Producto", back_populates="tienda", cascade="all, delete-orphan")
+    coordenadas = relationship("CoordenadasTienda", back_populates="tienda", uselist=False, cascade="all, delete-orphan")
+
+
+class CoordenadasTienda(Base):
+    """Coordenadas geográficas para RF05, sin alterar las tiendas existentes."""
+    __tablename__ = "coordenadas_tienda"
+    tienda_id = Column(Integer, ForeignKey("tiendas.id", ondelete="CASCADE"), primary_key=True)
+    latitud = Column(Float, nullable=False)
+    longitud = Column(Float, nullable=False)
+    tienda = relationship("Tienda", back_populates="coordenadas")
+    __table_args__ = (
+        CheckConstraint("latitud >= -90 AND latitud <= 90", name="latitud_valida"),
+        CheckConstraint("longitud >= -180 AND longitud <= 180", name="longitud_valida"),
+    )
 
 
 class Producto(Base):
