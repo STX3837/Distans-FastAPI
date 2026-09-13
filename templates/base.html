@@ -11,6 +11,8 @@
     {% block header %}
     {% if cabecera_comprador %}
     {% include "cabecera_comprador.html" %}
+    {% elif (es_vendedor or es_admin) and cabecera_gestion %}
+    {% include "cabecera_gestion.html" %}
     {% else %}
     <header class="topbar">
         <a class="brand" href="/inicio" aria-label="Distans: inicio">
@@ -29,9 +31,10 @@
         </a>
 
         <div class="topbar-actions">
-            <a class="topbar-button" href="/carrito">Carrito</a>
+            {% if not es_vendedor and not es_admin %}<a class="topbar-button" href="/carrito">Carrito</a>{% endif %}
             {% if user_name %}
             <a class="topbar-button" href="/usuarios/cuenta">Mi cuenta</a>
+            {% if es_vendedor or es_admin %}<a class="topbar-button" href="/mi-tienda">{{ 'Tiendas' if es_admin else 'Mi tienda' }}</a>{% endif %}
             {% if es_admin %}<a class="topbar-button" href="/admin/usuarios/panel">Usuarios</a>{% endif %}
             <span class="user-name">{{ user_name }}</span>
             <button class="topbar-button topbar-logout" type="button" onclick="cerrarSesion()">Cerrar sesión</button>

@@ -4,7 +4,7 @@ import secrets
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
@@ -84,18 +84,23 @@ def filtrar_radio(query, db, geo, columna=Producto.tienda_id):
 
 
 def contexto_publico(request, db):
-    contexto = {"user_name": None, "es_admin": False, "puede_comprar": True}
+    contexto = {"user_name": None, "es_admin": False, "es_vendedor": False, "puede_comprar": True}
     if request.session.get("usuario"):
         try:
             usuario = _obtener_usuario_actual(request, db)
             contexto.update(user_name=usuario.nombre, es_admin=usuario.rol == RolUsuario.ADMIN,
+                            es_vendedor=usuario.rol == RolUsuario.VENDEDOR,
                             puede_comprar=usuario.rol == RolUsuario.COMPRADOR)
+            if usuario.rol == RolUsuario.VENDEDOR:
+                tienda_propia = db.query(Tienda).filter_by(vendedor_id=usuario.id).order_by(Tienda.id).first()
+                contexto["tienda_activa"] = tienda_propia.id if tienda_propia else None
         except HTTPException as error:
             if error.status_code not in {401, 403, 404}: raise
             request.session.clear()
     token = request.session.setdefault("csrf_token", secrets.token_urlsafe(32))
     contexto["csrf_token"] = token
     contexto["cabecera_comprador"] = contexto["puede_comprar"]
+    contexto["cabecera_gestion"] = contexto["es_vendedor"] or contexto["es_admin"]
     contexto["es_inicio"] = request.url.path == "/inicio"
     contexto["categorias"] = list(Categoria)
     return contexto
@@ -137,14 +142,35 @@ def buscar(db, q, categoria, destacados, pagina, geo=(None, None, 0), tienda_id=
 
 
 @router.get("/api/productos")
-def api_productos(q: str = Query("", max_length=120), categoria: Categoria | None = Depends(categoria_filtrada),
+def api_productos(request: Request, q: str = Query("", max_length=120), categoria: Categoria | None = Depends(categoria_filtrada),
                   destacados: bool = False, pagina: int = Query(1, ge=1), geo=Depends(geografia), db: Session = Depends(get_db)):
+    vendedor = vendedor_actual(request, db)
+    if vendedor:
+        tienda = db.query(Tienda).filter_by(vendedor_id=vendedor.id).first()
+        if tienda is None:
+            return {"productos": [], "tiendas": [], "total": 0, "pagina": pagina, "paginas": 0, "por_pagina": PAGE_SIZE}
+        return buscar(db, q.strip(), categoria, destacados, pagina, geo, tienda.id)
     return buscar(db, q.strip(), categoria, destacados, pagina, geo)
+
+
+def vendedor_actual(request, db):
+    if not request.session.get("usuario"): return None
+    usuario = _obtener_usuario_actual(request, db)
+    return usuario if usuario.rol == RolUsuario.VENDEDOR else None
+
+
+def limitar_tienda_vendedor(request, db, tienda_id):
+    vendedor = vendedor_actual(request, db)
+    if vendedor and not db.query(Tienda).filter_by(id=tienda_id, vendedor_id=vendedor.id).first():
+        raise HTTPException(404, "Tienda no encontrada")
+    return vendedor
 
 
 @router.get("/inicio", response_class=HTMLResponse)
 def inicio(request: Request, q: str = Query("", max_length=120), categoria: Categoria | None = Depends(categoria_filtrada),
            destacados: bool = False, pagina: int = Query(1, ge=1), geo=Depends(geografia), db: Session = Depends(get_db)):
+    if vendedor_actual(request, db):
+        return RedirectResponse("/mi-tienda", status_code=303)
     q = q.strip()
     es_busqueda = bool(q or categoria or destacados or "q" in request.query_params or "categoria" in request.query_params)
     es_busqueda = es_busqueda or bool(geo[2])
@@ -178,6 +204,8 @@ class CoordenadasRequest(BaseModel):
 def catalogo_tienda(request: Request, tienda_id: int, q: str = Query("", max_length=120),
                     categoria: Categoria | None = Depends(categoria_filtrada), destacados: bool = False,
                     pagina: int = Query(1, ge=1), db: Session = Depends(get_db)):
+    if limitar_tienda_vendedor(request, db, tienda_id):
+        return RedirectResponse(f"/gestion/tiendas/{tienda_id}/productos", status_code=303)
     tienda = db.query(Tienda).join(Usuario, Tienda.vendedor_id == Usuario.id).filter(
         Tienda.id == tienda_id, Usuario.activo.is_(True),
     ).first()
@@ -191,6 +219,9 @@ def catalogo_tienda(request: Request, tienda_id: int, q: str = Query("", max_len
         if destacados: params["destacados"] = "true"
         return f"/tiendas/{tienda.id}?" + urlencode(params)
     return pagina_publica(request, db, "tienda.html", {
+        "tienda_activa": tienda.id,
+        "tienda_categorias": [categoria.value for categoria in tienda.categorias],
+        "tienda_imagen": tienda.imagen if tienda.imagen and (tienda.imagen.startswith(("http://", "https://")) or (tienda.imagen.startswith("/") and not tienda.imagen.startswith("//"))) else None,
         **datos, "tienda": tienda, "q": q, "categorias": list(Categoria),
         "categoria_seleccionada": categoria.value if categoria else "", "destacados": destacados,
         "anterior": pagina_url(pagina - 1) if pagina > 1 else None,
@@ -206,13 +237,18 @@ def obtener_producto(db, producto_id):
 
 
 @router.get("/api/productos/{producto_id}")
-def ficha_api(producto_id: int, db: Session = Depends(get_db)):
-    return producto_publico(obtener_producto(db, producto_id))
+def ficha_api(producto_id: int, request: Request, db: Session = Depends(get_db)):
+    producto = obtener_producto(db, producto_id)
+    limitar_tienda_vendedor(request, db, producto.tienda_id)
+    return producto_publico(producto)
 
 
 @router.get("/productos/{producto_id}", response_class=HTMLResponse)
 def ficha(request: Request, producto_id: int, db: Session = Depends(get_db)):
-    return pagina_publica(request, db, "producto.html", {"producto": producto_publico(obtener_producto(db, producto_id))})
+    registro = obtener_producto(db, producto_id)
+    limitar_tienda_vendedor(request, db, registro.tienda_id)
+    producto = producto_publico(registro)
+    return pagina_publica(request, db, "producto.html", {"producto": producto, "tienda_activa": producto["tienda"]["id"]})
 
 
 def comprador(request, db):

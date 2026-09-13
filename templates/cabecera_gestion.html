@@ -1,0 +1,21 @@
+<header class="market-header management-header">
+<div class="market-top"><a class="brand" href="/mi-tienda" aria-label="Distans: inicio">
+            <div class="brand-mark" aria-hidden="true">
+                <svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="8" y="18" width="30" height="30" rx="4" fill="#F3FAFF" stroke="#4AA3DF" stroke-width="2"/>
+                    <path d="M12 24H34" stroke="#4AA3DF" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M14 30H32" stroke="#4AA3DF" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M18 18L18 14C18 11.8 19.8 10 22 10H24C26.2 10 28 11.8 28 14V18" stroke="#4AA3DF" stroke-width="2"/>
+                    <circle cx="24" cy="42" r="3" fill="#4AA3DF"/>
+                    <path d="M24 52C24 52 33 43.9 33 37.1C33 32.1 29 28 24 28C19 28 15 32.1 15 37.1C15 43.9 24 52 24 52Z" fill="#F3FAFF" stroke="#F0A43A" stroke-width="2"/>
+                    <circle cx="24" cy="37" r="2.6" fill="#4AA3DF"/>
+                </svg>
+            </div>
+            <span class="brand-name">DISTANS</span>
+        </a>
+<div class="market-account"><span>{{ user_name }}</span><a class="account-button" href="/mi-tienda">{{ 'Todas las tiendas' if es_admin else 'Mi tienda' }}</a><a class="account-button" href="/usuarios/cuenta">Mi cuenta</a>{% if es_admin %}<a class="account-button" href="/admin/usuarios/panel">Usuarios</a>{% endif %}<button class="account-button" type="button" onclick="cerrarSesion()">Cerrar sesión</button></div></div>
+<nav class="market-tabs" aria-label="Gestión de tienda">
+{% if tienda_activa %}{% if es_admin %}<a href="/gestion/tiendas/{{ tienda_activa }}">Resumen</a>{% endif %}<a href="/gestion/tiendas/{{ tienda_activa }}/productos">Productos</a><a href="/gestion/tiendas/{{ tienda_activa }}/editar">Editar tienda</a>
+{% elif es_admin %}<a href="/mi-tienda">Tiendas</a><a href="/gestion/tiendas/nueva">Registrar tienda</a>
+{% else %}<span>Productos</span><span>Editar tienda</span>{% endif %}
+</nav></header>

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.crud import autenticar_usuario, crear_usuario
 from app.database import get_db
-from app.models import Usuario
+from app.models import Usuario, RolUsuario
 from app.schemas import UsuarioRegistro
 
 router = APIRouter(tags=["autenticación"])
@@ -142,6 +142,7 @@ def iniciar_sesion(datos: LoginRequest, request: Request, db: Session = Depends(
 
     response = JSONResponse(content={
         "mensaje": "Inicio de sesión correcto",
+        "redirect_url": "/mi-tienda" if usuario.rol in {RolUsuario.VENDEDOR, RolUsuario.ADMIN} else "/inicio",
         "usuario": {
             "id": usuario.id,
             "nombre": usuario.nombre,
@@ -175,13 +176,13 @@ def pagina_login(request: Request, db: Session = Depends(get_db)):
     if request.session.get("usuario"):
         from app.routers.users import _obtener_usuario_actual
         try:
-            _obtener_usuario_actual(request, db)
+            usuario = _obtener_usuario_actual(request, db)
         except HTTPException as error:
             if error.status_code not in {401, 403, 404}:
                 raise
             request.session.clear()
         else:
-            return RedirectResponse(url="/inicio", status_code=status.HTTP_303_SEE_OTHER)
+            return RedirectResponse(url="/mi-tienda" if usuario.rol in {RolUsuario.VENDEDOR, RolUsuario.ADMIN} else "/inicio", status_code=status.HTTP_303_SEE_OTHER)
 
     return templates.TemplateResponse(
         request=request,
@@ -195,5 +196,5 @@ def pagina_bienvenida(request: Request, db: Session = Depends(get_db)):
     from app.routers.users import _obtener_usuario_actual
     if not request.session.get("usuario"):
         return RedirectResponse(url="/login", status_code=303)
-    _obtener_usuario_actual(request, db)
-    return RedirectResponse(url="/inicio", status_code=303)
+    usuario = _obtener_usuario_actual(request, db)
+    return RedirectResponse(url="/mi-tienda" if usuario.rol in {RolUsuario.VENDEDOR, RolUsuario.ADMIN} else "/inicio", status_code=303)

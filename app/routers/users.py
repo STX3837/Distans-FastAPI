@@ -170,6 +170,7 @@ def pagina_cuenta(request: Request, db: Session = Depends(get_db)):
     usuario = _obtener_usuario_actual(request, db)
     return templates.TemplateResponse(request=request, name="cuenta.html", context={
         "usuario": usuario, "user_name": usuario.nombre, "es_admin": usuario.rol == RolUsuario.ADMIN,
+        "es_vendedor": usuario.rol == RolUsuario.VENDEDOR,
     })
 
 

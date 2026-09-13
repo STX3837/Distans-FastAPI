@@ -3,8 +3,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 import os
 from app.database import engine
-from app.models import Base
-from app.routers import users, auth, catalogo
+from app.models import Base, Tienda
+from app.routers import users, auth, catalogo, gestion
 from app.password_reset import router as password_reset_router
 
 # Crear la aplicación FastAPI
@@ -34,9 +34,14 @@ if os.path.exists("static"):
 @app.on_event("startup")
 def startup_event():
     Base.metadata.create_all(bind=engine)
+    # create_all no añade índices a tablas existentes.
+    for index in Tienda.__table__.indexes:
+        if index.name == "uq_tiendas_vendedor_id":
+            index.create(bind=engine, checkfirst=True)
 
 # Registrar routers
 app.include_router(catalogo.router)
+app.include_router(gestion.router)
 app.include_router(auth.router)
 app.include_router(password_reset_router)
 app.include_router(users.router)
