@@ -4,7 +4,11 @@
         button.addEventListener('click', async () => {
             const id = button.dataset.addCart || button.dataset.updateCart || button.dataset.removeCart;
             const remove = Boolean(button.dataset.removeCart);
-            const input = button.dataset.updateCart ? document.querySelector('[data-cart-quantity="' + id + '"]') : document.querySelector('[data-add-quantity]');
+            const input = button.dataset.updateCart
+                ? document.querySelector('[data-cart-quantity="' + id + '"]')
+                : button.dataset.addCart
+                    ? button.closest('.product-card, .product-detail').querySelector('[data-add-quantity]')
+                    : null;
             if (input && !input.reportValidity()) return;
             const token = document.cookie.split('; ').find(cookie => cookie.startsWith('csrf_token='));
             button.disabled = true;

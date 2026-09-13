@@ -21,6 +21,36 @@ def headers(client):
     return {"X-CSRF-Token": client.cookies.get("csrf_token")}
 
 
+def test_buyer_header_on_shopping_pages_and_excluded_from_account_pages(client, product, user_factory):
+    for path in ("/inicio", f"/productos/{product.id}", f"/tiendas/{product.tienda_id}", "/carrito"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert 'class="market-header"' in response.text
+        assert 'href="/inicio?tab=tiendas"' in response.text
+        assert 'href="/inicio?q=&amp;tab=productos"' in response.text
+    for path in ("/", "/login", "/registro", "/recuperar-contrasena"):
+        assert 'class="market-header"' not in client.get(path).text
+    buyer = user_factory(email="headerbuyer@example.com")
+    client.post("/api/login", json={"email": buyer.email, "contrasena": "clave12345"})
+    assert 'class="market-header"' in client.get(f"/productos/{product.id}").text
+    assert 'class="market-header"' not in client.get("/usuarios/cuenta").text
+
+
+@pytest.mark.parametrize("role", [RolUsuario.VENDEDOR, RolUsuario.ADMIN])
+def test_other_roles_do_not_use_buyer_header(client, product, user_factory, role):
+    user = user_factory(email="headerrole@example.com", rol=role)
+    client.post("/api/login", json={"email": user.email, "contrasena": "clave12345"})
+    for path in ("/inicio", f"/productos/{product.id}", f"/tiendas/{product.tienda_id}"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert 'class="market-header"' not in response.text
+
+
+def test_header_navigation_opens_selected_home_tab(client):
+    for tab in ("mapa", "productos", "tiendas"):
+        assert f'data-default-tab="{tab}"' in client.get("/inicio", params={"tab": tab}).text
+
+
 def test_public_detail_offer_and_unavailable(client, product, db_session):
     data = client.get(f"/api/productos/{product.id}").json()
     assert data["descuento"] == 25

@@ -4,9 +4,10 @@
     function showTab(name) {
         document.querySelectorAll('.market-panel').forEach(panel => {panel.hidden = panel.id !== 'panel-' + name;});
         document.querySelectorAll('[data-tab]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.tab === name)));
+        document.querySelectorAll('[data-tab]').forEach(link => {if (link.dataset.tab === name) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');});
         if (name === 'mapa' && map) requestAnimationFrame(() => map.invalidateSize());
     }
-    document.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => showTab(button.dataset.tab)));
+    document.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', event => {event.preventDefault(); showTab(button.dataset.tab);}));
     const defaultTab = document.querySelector('.market-page').dataset.defaultTab;
 
     if (!window.L) { showTab(defaultTab); status.textContent = 'No se ha podido cargar el mapa. Puedes consultar las tiendas en las tarjetas.'; return; }
@@ -31,17 +32,11 @@
     const markers = new Map();
     for (const [id, group] of shops) {
         const popup = document.createElement('div'); popup.className = 'shop-popup';
-        const heading = document.createElement('h3'); heading.textContent = group.shop.nombre; popup.append(heading);
+        const heading = document.createElement('h3');
+        const shopLink = document.createElement('a'); shopLink.href = '/tiendas/' + id; shopLink.textContent = group.shop.nombre;
+        heading.append(shopLink); popup.append(heading);
+        const catalogLink = document.createElement('a'); catalogLink.href = '/tiendas/' + id; catalogLink.textContent = 'Ver catálogo de la tienda'; popup.append(catalogLink);
         const address = document.createElement('p'); address.textContent = group.shop.direccion || group.shop.ubicacion || ''; popup.append(address);
-        const list = document.createElement('ul');
-        for (const product of group.products) {
-            const item = document.createElement('li'); const link = document.createElement('a'); link.href = '/productos/' + product.id;
-            link.addEventListener('click', () => showTab('productos'));
-            const price = product.precio_oferta !== null ? product.precio_oferta : product.precio;
-            link.textContent = product.nombre + ' · ' + new Intl.NumberFormat('es-ES', {style: 'currency', currency: 'EUR'}).format(price);
-            item.append(link); list.append(item);
-        }
-        popup.append(list);
         markers.set(id, L.marker([group.shop.latitud, group.shop.longitud], {title: group.shop.nombre, icon: greenIcon}).addTo(map).bindPopup(popup));
     }
     if (markers.size) {
@@ -56,6 +51,7 @@
         map.invalidateSize(); map.setView(marker.getLatLng(), 16, {animate: false}); marker.openPopup();
     }));
     const radiusSelect = document.getElementById('searchRadius');
+    if (!radiusSelect) {showTab(defaultTab); return;}
     let centre = map.getCenter();
     const params = new URLSearchParams(window.location.search);
     if (params.has('latitud') && params.has('longitud')) centre = L.latLng(Number(params.get('latitud')), Number(params.get('longitud')));

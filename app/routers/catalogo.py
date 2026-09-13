@@ -95,6 +95,9 @@ def contexto_publico(request, db):
             request.session.clear()
     token = request.session.setdefault("csrf_token", secrets.token_urlsafe(32))
     contexto["csrf_token"] = token
+    contexto["cabecera_comprador"] = contexto["puede_comprar"]
+    contexto["es_inicio"] = request.url.path == "/inicio"
+    contexto["categorias"] = list(Categoria)
     return contexto
 
 
@@ -106,14 +109,18 @@ def pagina_publica(request, db, name, contexto):
     return response
 
 
-def buscar(db, q, categoria, destacados, pagina, geo=(None, None, 0)):
+def buscar(db, q, categoria, destacados, pagina, geo=(None, None, 0), tienda_id=None):
     query = seleccionar(db, q, categoria, destacados)
+    if tienda_id is not None:
+        query = query.filter(Producto.tienda_id == tienda_id)
     query = filtrar_radio(query, db, geo)
     total = query.count()
     productos = query.options(joinedload(Producto.tienda).joinedload(Tienda.coordenadas)).order_by(
         Producto.destacado.desc(), Producto.id.desc(),
     ).offset((pagina - 1) * PAGE_SIZE).limit(PAGE_SIZE).all()
     tiendas_query = db.query(Tienda).join(Usuario, Tienda.vendedor_id == Usuario.id).filter(Usuario.activo.is_(True))
+    if tienda_id is not None:
+        tiendas_query = tiendas_query.filter(Tienda.id == tienda_id)
     if categoria or destacados:
         tiendas_query = tiendas_query.filter(Tienda.id.in_(query.with_entities(Producto.tienda_id)))
     elif q:
@@ -151,6 +158,7 @@ def inicio(request: Request, q: str = Query("", max_length=120), categoria: Cate
         if geo[0] is not None: params.update(latitud=geo[0], longitud=geo[1], radio=geo[2])
         return "/inicio?" + urlencode(params)
     return pagina_publica(request, db, "inicio.html", {
+        "vista_inicio": request.query_params.get("tab") if request.query_params.get("tab") in {"mapa", "productos", "tiendas"} else ("productos" if es_busqueda else "mapa"),
         "latitud": geo[0], "longitud": geo[1], "radio": geo[2],
         **datos, "q": q, "categoria_seleccionada": categoria.value if categoria else "",
         "categorias": list(Categoria), "destacados": destacados, "es_busqueda": es_busqueda,
@@ -164,6 +172,30 @@ def inicio(request: Request, q: str = Query("", max_length=120), categoria: Cate
 class CoordenadasRequest(BaseModel):
     latitud: float = Field(ge=-90, le=90, allow_inf_nan=False)
     longitud: float = Field(ge=-180, le=180, allow_inf_nan=False)
+
+
+@router.get("/tiendas/{tienda_id}", response_class=HTMLResponse)
+def catalogo_tienda(request: Request, tienda_id: int, q: str = Query("", max_length=120),
+                    categoria: Categoria | None = Depends(categoria_filtrada), destacados: bool = False,
+                    pagina: int = Query(1, ge=1), db: Session = Depends(get_db)):
+    tienda = db.query(Tienda).join(Usuario, Tienda.vendedor_id == Usuario.id).filter(
+        Tienda.id == tienda_id, Usuario.activo.is_(True),
+    ).first()
+    if tienda is None:
+        raise HTTPException(404, "Tienda no encontrada")
+    q = q.strip()
+    datos = buscar(db, q, categoria, destacados, pagina, tienda_id=tienda.id)
+    def pagina_url(numero):
+        params = {"pagina": numero, "q": q}
+        if categoria: params["categoria"] = categoria.value
+        if destacados: params["destacados"] = "true"
+        return f"/tiendas/{tienda.id}?" + urlencode(params)
+    return pagina_publica(request, db, "tienda.html", {
+        **datos, "tienda": tienda, "q": q, "categorias": list(Categoria),
+        "categoria_seleccionada": categoria.value if categoria else "", "destacados": destacados,
+        "anterior": pagina_url(pagina - 1) if pagina > 1 else None,
+        "siguiente": pagina_url(pagina + 1) if pagina < datos["paginas"] else None,
+    })
 
 
 def obtener_producto(db, producto_id):

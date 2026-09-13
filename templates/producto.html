@@ -10,7 +10,7 @@
 {% if producto.marca %}<p>Marca: {{ producto.marca }}</p>{% endif %}
 {% include "precio.html" %}
 <p class="availability">{{ 'Disponible' if producto.disponible else 'No disponible' }} · Stock: {{ producto.stock }}</p>
-<h2>{{ producto.tienda.nombre }}</h2><p>{{ producto.tienda.direccion or producto.tienda.ubicacion or 'Dirección pendiente' }}</p>
+<h2><a href="/tiendas/{{ producto.tienda.id }}">{{ producto.tienda.nombre }}</a></h2><p>{{ producto.tienda.direccion or producto.tienda.ubicacion or 'Dirección pendiente' }}</p>
 {% if producto.tienda.horario %}<p>Horario: {{ producto.tienda.horario }}</p>{% endif %}
 <label for="cantidadProducto">Cantidad</label><input id="cantidadProducto" data-add-quantity type="number" min="1" max="{{ producto.stock }}" value="1" {% if not producto.disponible %}disabled{% endif %}>
 <button type="button" class="add-cart" data-add-cart="{{ producto.id }}" {% if not producto.disponible or not puede_comprar %}disabled{% endif %}>Añadir al carrito</button>

@@ -9,6 +9,9 @@
 </head>
 <body>
     {% block header %}
+    {% if cabecera_comprador %}
+    {% include "cabecera_comprador.html" %}
+    {% else %}
     <header class="topbar">
         <a class="brand" href="/inicio" aria-label="Distans: inicio">
             <div class="brand-mark" aria-hidden="true">
@@ -51,6 +54,7 @@
             {% endif %}
         </div>
     </header>
+    {% endif %}
     {% endblock %}
 
     {% block content %}{% endblock %}

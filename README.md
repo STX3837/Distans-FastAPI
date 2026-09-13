@@ -128,4 +128,3 @@ Pruebas: instala `pip install -r requirements-dev.txt` y ejecuta `python -m pyte
 
 Criterios: [almacenamiento de contraseñas de OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) y [recuperación de contraseña de OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html).
 
-
