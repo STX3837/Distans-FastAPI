@@ -1,0 +1,18 @@
+                    <article class="product-card" data-product-shop="{{ producto.tienda.id }}" id="producto-{{ producto.id }}">
+                        <div class="product-image">{% if producto.imagen %}<img src="{{ producto.imagen }}" alt="{{ producto.nombre }}" loading="lazy" onerror="this.hidden=true">{% else %}<span aria-hidden="true">🛍</span>{% endif %}{% if producto.destacado %}<span class="featured-badge">Destacado</span>{% endif %}</div>
+                        <div class="product-body"><p class="product-category">{{ producto.categoria }}</p><h3>{{ producto.nombre }}</h3>{% if producto.descripcion %}<p class="product-description">{{ producto.descripcion }}</p>{% endif %}
+                        {% include "precio.html" %}
+                        <p class="availability">{{ 'Disponible' if producto.disponible else 'No disponible' }}</p>
+                        <a class="map-link" href="/productos/{{ producto.id }}">Ver ficha del producto</a>
+                        <div class="product-cart-controls">
+                        <label for="cantidad-producto-{{ producto.id }}">Cantidad</label>
+                        <input id="cantidad-producto-{{ producto.id }}" data-add-quantity="{{ producto.id }}" type="number" min="1" max="{{ [producto.stock, 999]|min if producto.disponible else 1 }}" step="1" value="1" required {% if not producto.disponible or not puede_comprar %}disabled{% endif %}>
+                        <button class="add-cart" type="button" data-add-cart="{{ producto.id }}" {% if not producto.disponible or not puede_comprar %}disabled{% endif %}>Añadir al carrito</button>
+                        </div>
+                        {% if tienda is not defined %}
+                        <p class="shop-name"><a href="/tiendas/{{ producto.tienda.id }}">{{ producto.tienda.nombre }}</a></p>{% if producto.tienda.direccion %}<p class="shop-address">{{ producto.tienda.direccion }}</p>{% endif %}
+                        {% if producto.tienda.latitud is not none %}<button class="map-link" type="button" data-shop-id="{{ producto.tienda.id }}">Ver tienda en el mapa</button>{% else %}<p class="location-missing">Ubicación de la tienda pendiente</p>{% endif %}
+                        {% endif %}
+                        {% if producto.stock <= 0 %}<p class="stock-note">Agotado</p>{% endif %}
+                        </div>
+                    </article>

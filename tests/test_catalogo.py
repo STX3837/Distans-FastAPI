@@ -20,12 +20,13 @@ def catalog(db_session, user_factory):
     return seller, shop, featured, regular, hidden
 
 
-def test_home_renders_featured_products_without_login(client, catalog):
+def test_home_renders_all_products_without_login(client, catalog):
     response = client.get("/inicio")
     assert response.status_code == 200
     assert "Taza artesanal" in response.text
-    assert "Ramo de flores" not in response.text
-    assert "Producto oculto" not in response.text
+    assert "Ramo de flores" in response.text
+    assert "Producto oculto" in response.text
+    assert "No disponible" in response.text
     assert 'id="productsMap"' in response.text
     assert 'id="mapProducts"' in response.text
     assert "0.00 €" in response.text
@@ -36,14 +37,14 @@ def test_search_matches_product_brand_and_shop(client, catalog, term, expected):
     response = client.get("/api/productos", params={"q": term})
     assert response.status_code == 200
     assert expected in [p["nombre"] for p in response.json()["productos"]]
-    assert all(p["nombre"] != "Producto oculto" for p in response.json()["productos"])
+    assert all("disponible" in p for p in response.json()["productos"])
 
 
 def test_filter_category_and_featured(client, catalog):
     response = client.get("/api/productos", params={"categoria": Categoria.FLORISTERIAS_JARDINERIA.value})
     assert [p["nombre"] for p in response.json()["productos"]] == ["Ramo de flores"]
     response = client.get("/api/productos", params={"destacados": "true"})
-    assert [p["nombre"] for p in response.json()["productos"]] == ["Taza artesanal"]
+    assert [p["nombre"] for p in response.json()["productos"]] == ["Producto oculto", "Taza artesanal"]
     assert client.get("/api/productos", params={"categoria": "inventada"}).status_code == 422
     assert client.get("/inicio", params={"q": "flores", "categoria": ""}).status_code == 200
 
@@ -64,7 +65,7 @@ def test_public_results_contain_coordinates_without_user_credentials(client, cat
     seller, _, _, _, _ = catalog
     response = client.get("/api/productos")
     products = response.json()["productos"]
-    assert len(products) == 2
+    assert len(products) == 3
     assert products[0]["tienda"]["latitud"] == 40.4
     assert products[0]["tienda"]["longitud"] == -3.7
     assert seller.email not in response.text
@@ -75,7 +76,7 @@ def test_shops_without_coordinates_still_appear(client, catalog, db_session):
     _, shop, _, _, _ = catalog
     db_session.delete(shop.coordenadas); db_session.commit()
     response = client.get("/api/productos")
-    assert response.json()["total"] == 2
+    assert response.json()["total"] == 3
     assert response.json()["productos"][0]["tienda"]["latitud"] is None
     assert "Ubicación de la tienda pendiente" in client.get("/inicio").text
 
@@ -93,8 +94,8 @@ def test_pagination_consistent_with_map_data(client, catalog, db_session):
     db_session.commit()
     first = client.get("/api/productos").json()
     second = client.get("/api/productos", params={"pagina": 2}).json()
-    assert first["total"] == 30 and first["paginas"] == 2
-    assert len(first["productos"]) == 24 and len(second["productos"]) == 6
+    assert first["total"] == 31 and first["paginas"] == 2
+    assert len(first["productos"]) == 24 and len(second["productos"]) == 7
     assert not set(p["id"] for p in first["productos"]) & set(p["id"] for p in second["productos"])
     assert client.get("/api/productos", params={"pagina": 0}).status_code == 422
 
@@ -107,7 +108,7 @@ def test_unsafe_images_and_names_are_escaped(client, catalog, db_session):
     response = client.get("/inicio")
     assert '<script>alert("x")</script>' not in response.text
     assert 'javascript:alert(1)' not in response.text
-    assert client.get("/api/productos").json()["productos"][0]["imagen"] is None
+    assert client.get(f"/api/productos/{featured.id}").json()["imagen"] is None
 
 
 def test_coordinate_update_requires_owner_role_and_csrf(app, client, catalog, user_factory):

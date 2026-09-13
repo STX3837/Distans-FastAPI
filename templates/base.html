@@ -9,6 +9,9 @@
 </head>
 <body>
     {% block header %}
+    {% if cabecera_comprador %}
+    {% include "cabecera_comprador.html" %}
+    {% else %}
     <header class="topbar">
         <a class="brand" href="/inicio" aria-label="Distans: inicio">
             <div class="brand-mark" aria-hidden="true">
@@ -26,6 +29,7 @@
         </a>
 
         <div class="topbar-actions">
+            <a class="topbar-button" href="/carrito">Carrito</a>
             {% if user_name %}
             <a class="topbar-button" href="/usuarios/cuenta">Mi cuenta</a>
             {% if es_admin %}<a class="topbar-button" href="/admin/usuarios/panel">Usuarios</a>{% endif %}
@@ -40,7 +44,7 @@
                     <circle cx="12" cy="8" r="4" stroke="#1E4FA8" stroke-width="1.8"/>
                 </svg>
             </a>
-            <a class="icon-button" href="/login" aria-label="Carrito">
+            <a class="icon-button" href="/carrito" aria-label="Carrito">
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M2 3H5L7.2 14.2C7.3 14.7 7.7 15 8.2 15H18.6C19.1 15 19.5 14.7 19.6 14.2L21 6H6" stroke="#1E4FA8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                     <circle cx="9" cy="20" r="1.4" stroke="#1E4FA8" stroke-width="1.8"/>
@@ -50,6 +54,7 @@
             {% endif %}
         </div>
     </header>
+    {% endif %}
     {% endblock %}
 
     {% block content %}{% endblock %}
