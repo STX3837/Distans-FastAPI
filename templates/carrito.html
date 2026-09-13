@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Carrito - Distans{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css">{% endblock %}
+{% block content %}<main class="catalog-page"><h1>Tu carrito</h1><a href="/inicio?q=">Seguir comprando</a>
+{% if not user_name %}<p>Tu carrito de invitado se conserva durante esta sesión del navegador.</p>{% endif %}
+{% for item in items %}{% set producto = item.producto %}
+<article class="cart-item"><h2><a href="/productos/{{ producto.id }}">{{ producto.nombre }}</a></h2>
+{% include "precio.html" %}
+{% if not item.disponible %}<p class="availability">No disponible en la cantidad seleccionada. Reduce la cantidad o elimina el producto.</p>{% endif %}
+<label for="cantidad-{{ producto.id }}">Cantidad</label><input id="cantidad-{{ producto.id }}" data-cart-quantity="{{ producto.id }}" type="number" min="1" max="999" value="{{ item.cantidad }}">
+<button class="add-cart" data-update-cart="{{ producto.id }}" type="button">Actualizar</button>
+<button class="map-link" data-remove-cart="{{ producto.id }}" type="button">Eliminar</button>
+<p>Subtotal: {{ '%.2f'|format(item.subtotal) }} €</p></article>
+{% else %}<p class="empty-catalog">Tu carrito está vacío.</p>{% endfor %}
+<p class="product-price">Total: {{ '%.2f'|format(total) }} €</p><p data-cart-feedback role="status" aria-live="polite"></p>
+</main>{% endblock %}
+{% block scripts %}<script src="/static/carrito.js"></script>{% endblock %}

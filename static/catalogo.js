@@ -17,6 +17,9 @@
     }).addTo(map);
     tiles.on('tileerror', () => {status.textContent = 'No se ha podido cargar el fondo del mapa. Comprueba tu conexión; los marcadores siguen disponibles.';});
     const shops = new Map();
+    for (const shop of JSON.parse(document.getElementById('mapStores').textContent)) {
+        if (Number.isFinite(shop.latitud) && Number.isFinite(shop.longitud)) shops.set(shop.id, {shop, products: []});
+    }
     for (const product of products) {
         const shop = product.tienda;
         if (!Number.isFinite(shop.latitud) || !Number.isFinite(shop.longitud)) continue;
@@ -32,7 +35,7 @@
         const address = document.createElement('p'); address.textContent = group.shop.direccion || group.shop.ubicacion || ''; popup.append(address);
         const list = document.createElement('ul');
         for (const product of group.products) {
-            const item = document.createElement('li'); const link = document.createElement('a'); link.href = '#producto-' + product.id;
+            const item = document.createElement('li'); const link = document.createElement('a'); link.href = '/productos/' + product.id;
             link.addEventListener('click', () => showTab('productos'));
             const price = product.precio_oferta !== null ? product.precio_oferta : product.precio;
             link.textContent = product.nombre + ' · ' + new Intl.NumberFormat('es-ES', {style: 'currency', currency: 'EUR'}).format(price);
@@ -54,39 +57,36 @@
     }));
     const radiusSelect = document.getElementById('searchRadius');
     let centre = map.getCenter();
-    try {
-        const saved = JSON.parse(sessionStorage.getItem('distans-location'));
-        if (saved && Number.isFinite(saved.lat) && Number.isFinite(saved.lng) && Math.abs(saved.lat) <= 90 && Math.abs(saved.lng) <= 180) centre = L.latLng(saved.lat, saved.lng);
-        const savedRadius = sessionStorage.getItem('distans-radius');
-        if ([...radiusSelect.options].some(option => option.value === savedRadius)) radiusSelect.value = savedRadius;
-    } catch (error) { /* El mapa funciona también sin almacenamiento local. */ }
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('latitud') && params.has('longitud')) centre = L.latLng(Number(params.get('latitud')), Number(params.get('longitud')));
+    radiusSelect.value = params.get('radio') || '0';
+    function submitRadius() {
+        const url = new URL(window.location.href);
+        url.searchParams.set('latitud', centre.lat);
+        url.searchParams.set('longitud', centre.lng);
+        url.searchParams.set('radio', radiusSelect.value);
+        url.searchParams.set('pagina', '1');
+        window.location.assign(url);
+    }
+    document.querySelector('[data-geo="latitud"]').value = centre.lat;
+    document.querySelector('[data-geo="longitud"]').value = centre.lng;
+    document.querySelectorAll('[data-geo]').forEach(input => {input.disabled = false;});
+    document.querySelector('[data-geo="radio"]').value = radiusSelect.value;
     const centreMarker = L.circleMarker(centre, {radius: 8, color: '#168cff', fillColor: '#168cff', fillOpacity: 1, weight: 0}).addTo(map).bindTooltip('Centro de búsqueda');
     let radiusCircle;
     function filterRadius() {
         const radius = Number(radiusSelect.value);
         if (radiusCircle) map.removeLayer(radiusCircle);
         if (radius) radiusCircle = L.circle(centre, {radius, color: '#168cff', weight: 1, fillOpacity: .04}).addTo(map);
-        let visible = 0;
-        for (const [id, group] of shops) {
-            const included = !radius || centre.distanceTo([group.shop.latitud, group.shop.longitud]) <= radius;
-            const marker = markers.get(id);
-            if (included) {marker.addTo(map); visible++;} else map.removeLayer(marker);
-            document.querySelectorAll('[data-product-shop="' + id + '"], [data-store-id="' + id + '"]').forEach(card => {card.hidden = !included;});
-        }
-        document.querySelectorAll('[data-product-shop], [data-store-id]').forEach(card => {
-            if (!shops.has(Number(card.dataset.productShop || card.dataset.storeId))) card.hidden = radius > 0;
-        });
-        status.textContent = visible + (visible === 1 ? ' tienda en el mapa.' : ' tiendas en el mapa.') + (radius ? ' Radio: ' + radiusSelect.selectedOptions[0].textContent + '.' : '');
-        try {sessionStorage.setItem('distans-radius', radiusSelect.value);} catch (error) {}
+        status.textContent = markers.size + (markers.size === 1 ? ' tienda en el mapa.' : ' tiendas en el mapa.') + (radius ? ' Radio: ' + radius / 1000 + ' km.' : '');
     }
     function selectCentre(point) {
         centre = L.latLng(point); centreMarker.setLatLng(centre);
         map.setView(centre, 14, {animate: false});
         document.getElementById('selectLocation').textContent = 'Cambiar ubicación';
-        try {sessionStorage.setItem('distans-location', JSON.stringify({lat: centre.lat, lng: centre.lng}));} catch (error) {}
-        filterRadius();
+        submitRadius();
     }
-    radiusSelect.addEventListener('change', filterRadius);
+    radiusSelect.addEventListener('change', submitRadius);
     const dialog = document.getElementById('locationDialog');
     document.getElementById('selectLocation').addEventListener('click', () => dialog.showModal());
     document.getElementById('closeLocation').addEventListener('click', () => dialog.close());
@@ -103,7 +103,7 @@
             selectCentre([position.coords.latitude, position.coords.longitude]);
         }, () => {error.textContent = 'No se pudo obtener la ubicación. Puedes seleccionarla en el mapa.';}, {timeout: 10000});
     });
-    if (products.length) filterRadius();
+    filterRadius();
     showTab(defaultTab);
     window.addEventListener('resize', () => map.invalidateSize());
 })();
