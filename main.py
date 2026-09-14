@@ -6,6 +6,7 @@ from app.database import engine
 from app.models import Base
 from app.routers import users, auth, catalogo
 from app.password_reset import router as password_reset_router
+from app.migrations import actualizar_pedidos
 
 # Crear la aplicación FastAPI
 app = FastAPI(
@@ -34,6 +35,7 @@ if os.path.exists("static"):
 @app.on_event("startup")
 def startup_event():
     Base.metadata.create_all(bind=engine)
+    actualizar_pedidos(engine)
 
 # Registrar routers
 app.include_router(catalogo.router)

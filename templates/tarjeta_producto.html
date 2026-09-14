@@ -8,6 +8,7 @@
                         <label for="cantidad-producto-{{ producto.id }}">Cantidad</label>
                         <input id="cantidad-producto-{{ producto.id }}" data-add-quantity="{{ producto.id }}" type="number" min="1" max="{{ [producto.stock, 999]|min if producto.disponible else 1 }}" step="1" value="1" required {% if not producto.disponible or not puede_comprar %}disabled{% endif %}>
                         <button class="add-cart" type="button" data-add-cart="{{ producto.id }}" {% if not producto.disponible or not puede_comprar %}disabled{% endif %}>Añadir al carrito</button>
+                        <button class="add-cart buy-now" type="button" data-add-cart="{{ producto.id }}" data-buy-now {% if not producto.disponible or not puede_comprar %}disabled{% endif %}>Comprar ya</button>
                         </div>
                         {% if tienda is not defined %}
                         <p class="shop-name"><a href="/tiendas/{{ producto.tienda.id }}">{{ producto.tienda.nombre }}</a></p>{% if producto.tienda.direccion %}<p class="shop-address">{{ producto.tienda.direccion }}</p>{% endif %}

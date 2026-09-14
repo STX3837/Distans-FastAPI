@@ -13,5 +13,6 @@
 <p>Subtotal: {{ '%.2f'|format(item.subtotal) }} €</p></article>
 {% else %}<p class="empty-catalog">Tu carrito está vacío.</p>{% endfor %}
 <p class="product-price">Total: {{ '%.2f'|format(total) }} €</p><p data-cart-feedback role="status" aria-live="polite"></p>
+{% if items %}<button class="add-cart" type="button" data-buy-cart>Comprar productos del carrito</button>{% endif %}
 </main>{% endblock %}
 {% block scripts %}<script src="/static/carrito.js"></script>{% endblock %}
