@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List
 import hashlib
@@ -146,8 +147,10 @@ def cambiar_contrasena_usuario(
 @admin_router.get("/", response_model=List[UsuarioAdminResponse])
 def listar_usuarios(
     request: Request,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    q: str = Query("", max_length=120),
+    rol: RolUsuario | None = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -159,7 +162,11 @@ def listar_usuarios(
     """
     _obtener_admin_actual(request, db)
     
-    usuarios = obtener_todos_usuarios(db, skip, limit)
+    query = db.query(Usuario)
+    if q.strip():
+        query = query.filter(or_(*[campo.icontains(q.strip(), autoescape=True) for campo in (Usuario.nombre, Usuario.apellidos, Usuario.email)]))
+    if rol: query = query.filter(Usuario.rol == rol)
+    usuarios = query.order_by(Usuario.id).offset(skip).limit(limit).all()
     return usuarios
 
 
@@ -179,9 +186,8 @@ def pagina_admin(request: Request, db: Session = Depends(get_db)):
     if not request.session.get("usuario"):
         return RedirectResponse("/login", status_code=303)
     usuario = _obtener_admin_actual(request, db)
-    return templates.TemplateResponse(request=request, name="administracion.html", context={
-        "user_name": usuario.nombre, "es_admin": True,
-    })
+    from app.routers.catalogo import pagina_publica
+    return pagina_publica(request, db, "administracion.html", {"panel_cuentas": True})
 
 
 @admin_router.get("/{usuario_id}", response_model=UsuarioAdminResponse)

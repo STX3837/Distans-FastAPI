@@ -220,8 +220,11 @@ def borrar_producto(producto_id: int, request: Request, db: Session = Depends(ge
 
 
 @router.get("/mi-tienda")
+@router.get("/admin/tiendas")
 def mis_tiendas(request: Request, db: Session = Depends(get_db)):
     usuario = gestor(request, db)
+    if request.url.path == "/admin/tiendas" and usuario.rol != RolUsuario.ADMIN:
+        raise HTTPException(403, "Acceso exclusivo para administradores")
     tiendas = tiendas_permitidas(db, usuario).order_by(Tienda.nombre).all()
     return pagina_publica(request, db, "gestion_tiendas.html", {"tiendas_gestion": [datos_tienda(t) for t in tiendas],
         "tienda_activa": tiendas[0].id if tiendas and usuario.rol == RolUsuario.VENDEDOR else None})
@@ -239,6 +242,33 @@ def nueva_tienda(request: Request, db: Session = Depends(get_db)):
 
 class StockDatos(BaseModel):
     stock: int = Field(ge=0, le=1000000, strict=True)
+
+
+class StockProductoDatos(StockDatos):
+    producto_id: int = Field(ge=1)
+
+
+class StocksDatos(BaseModel):
+    productos: list[StockProductoDatos] = Field(min_length=1, max_length=100)
+
+
+@router.patch("/api/gestion/tiendas/{tienda_id}/stock")
+def editar_stocks(tienda_id: int, datos: StocksDatos, request: Request, db: Session = Depends(get_db)):
+    usuario = gestor(request, db)
+    _validar_csrf(request)
+    tienda_permitida(db, usuario, tienda_id)
+    ids = [item.producto_id for item in datos.productos]
+    if len(set(ids)) != len(ids):
+        raise HTTPException(422, "Hay productos repetidos")
+    productos = db.query(Producto).filter(Producto.tienda_id == tienda_id, Producto.id.in_(ids)).all()
+    if len(productos) != len(ids):
+        raise HTTPException(404, "Producto no encontrado en esta tienda")
+    stocks = {item.producto_id: item.stock for item in datos.productos}
+    for producto in productos:
+        producto.stock = stocks[producto.id]
+        producto.fecha_actualizacion = datetime.utcnow()
+    db.commit()
+    return {"productos": [{"id": producto.id, "stock": producto.stock} for producto in productos]}
 
 
 @router.patch("/api/gestion/productos/{producto_id}/stock")

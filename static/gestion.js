@@ -46,16 +46,38 @@
             editor.querySelector('[data-product-status]').textContent = ''; editor.showModal();
         });
         document.getElementById('closeProductEditor').addEventListener('click', () => editor.close());
-        document.getElementById('editStock').addEventListener('click', () => {
-            document.querySelectorAll('.stock-edit-controls').forEach(control => {control.hidden = !control.hidden;});
+        const editStock = document.getElementById('editStock');
+        const saveStocks = document.getElementById('saveStocks');
+        const cancelStocks = document.getElementById('cancelStocks');
+        const stockInputs = [...document.querySelectorAll('[data-stock-product]')];
+        function stockEditing(active) {
+            document.querySelectorAll('.stock-edit-controls').forEach(control => {control.hidden = !active;});
+            editStock.hidden = active; saveStocks.hidden = !active; cancelStocks.hidden = !active;
+            editStock.style.display = active ? 'none' : '';
+            saveStocks.style.display = active ? '' : 'none';
+            cancelStocks.style.display = active ? '' : 'none';
+        }
+        stockEditing(false);
+        editStock.addEventListener('click', () => {status.textContent = ''; stockEditing(true);});
+        cancelStocks.addEventListener('click', () => {
+            stockInputs.forEach(input => {input.value = input.defaultValue;});
+            status.textContent = ''; stockEditing(false);
         });
-        document.querySelectorAll('[data-update-stock]').forEach(button => button.addEventListener('click', async () => {
-            const input = button.closest('.stock-edit-controls').querySelector('input');
-            if (!input.reportValidity()) return;
-            button.disabled = true;
-            try {await mutate('/api/gestion/productos/' + button.dataset.updateStock + '/stock', 'PATCH', {stock: Number(input.value)}); window.location.reload();}
-            catch (error) {fail(error);} finally {button.disabled = false;}
-        }));
+        saveStocks.addEventListener('click', async () => {
+            if (!stockInputs.every(input => input.reportValidity())) return;
+            const productos = stockInputs.filter(input => Number(input.value) !== Number(input.defaultValue))
+                .map(input => ({producto_id: Number(input.dataset.stockProduct), stock: Number(input.value)}));
+            if (!productos.length) {stockEditing(false); return;}
+            saveStocks.disabled = true; cancelStocks.disabled = true;
+            stockInputs.forEach(input => {input.disabled = true;});
+            try {
+                await mutate('/api/gestion/tiendas/' + productForm.dataset.storeId + '/stock', 'PATCH', {productos});
+                window.location.reload();
+            } catch (error) {fail(error);} finally {
+                saveStocks.disabled = false; cancelStocks.disabled = false;
+                stockInputs.forEach(input => {input.disabled = false;});
+            }
+        });
         document.querySelectorAll('[data-edit-product]').forEach(button => button.addEventListener('click', () => {
             const product = JSON.parse(button.dataset.editProduct);
             for (const field of productForm.elements) {

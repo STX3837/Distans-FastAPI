@@ -4,7 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 import os
 from app.database import engine
 from app.models import Base, Tienda
-from app.routers import users, auth, catalogo, gestion
+from app.routers import users, auth, catalogo, gestion, admin_pedidos
 from app.password_reset import router as password_reset_router
 
 # Crear la aplicación FastAPI
@@ -42,6 +42,7 @@ def startup_event():
 # Registrar routers
 app.include_router(catalogo.router)
 app.include_router(gestion.router)
+app.include_router(admin_pedidos.router)
 app.include_router(auth.router)
 app.include_router(password_reset_router)
 app.include_router(users.router)

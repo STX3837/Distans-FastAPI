@@ -13,9 +13,12 @@
             </div>
             <span class="brand-name">DISTANS</span>
         </a>
-<div class="market-account"><span>{{ user_name }}</span><a class="account-button" href="/mi-tienda">{{ 'Todas las tiendas' if es_admin else 'Mi tienda' }}</a><a class="account-button" href="/usuarios/cuenta">Mi cuenta</a>{% if es_admin %}<a class="account-button" href="/admin/usuarios/panel">Usuarios</a>{% endif %}<button class="account-button" type="button" onclick="cerrarSesion()">Cerrar sesión</button></div></div>
+<div class="market-account"><span>{{ user_name }}</span>{% if not es_admin %}<a class="account-button" href="/mi-tienda">Mi tienda</a>{% endif %}<a class="account-button" href="/usuarios/cuenta">Mi cuenta</a><button class="account-button" type="button" onclick="cerrarSesion()">Cerrar sesión</button></div></div>
+{% if es_admin %}
+<nav class="market-tabs" aria-label="Panel de administración"><a href="/admin/tiendas" {% if not panel_cuentas %}aria-current="page"{% endif %}>Tiendas</a><a href="/admin/usuarios/panel" {% if panel_cuentas %}aria-current="page"{% endif %}>Cuentas</a></nav>
+{% else %}
 <nav class="market-tabs" aria-label="Gestión de tienda">
 {% if tienda_activa %}{% if es_admin %}<a href="/gestion/tiendas/{{ tienda_activa }}">Resumen</a>{% endif %}<a href="/gestion/tiendas/{{ tienda_activa }}/productos">Productos</a><a href="/gestion/tiendas/{{ tienda_activa }}/editar">Editar tienda</a>
 {% elif es_admin %}<a href="/mi-tienda">Tiendas</a><a href="/gestion/tiendas/nueva">Registrar tienda</a>
 {% else %}<span>Productos</span><span>Editar tienda</span>{% endif %}
-</nav></header>
+</nav>{% endif %}</header>

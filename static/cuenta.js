@@ -47,13 +47,17 @@ bindAccountForm('resetForm', 'recoveryMensaje', async (form, message) => {
 });
 const adminForm = document.getElementById('adminForm');
 if (adminForm) {
+    const editor = document.getElementById('accountEditor');
     let page = 0; const size = 20; const message = document.getElementById('adminMensaje');
     function clearEditor() {
         adminForm.reset(); document.getElementById('usuario_id').value = ''; document.getElementById('formTitle').textContent = 'Crear usuario';
         document.getElementById('passwordField').hidden = false; adminForm.elements.contrasena.required = true;
+        document.getElementById('accountEditorMensaje').textContent = '';
     }
     async function loadUsers() {
-        const users = await accountRequest('/admin/usuarios/?skip=' + page * size + '&limit=' + size);
+        const params = new URLSearchParams({skip: page * size, limit: size, q: document.getElementById('busquedaCuentas').value.trim()});
+        const role = document.getElementById('filtroRol').value; if (role) params.set('rol', role);
+        const users = await accountRequest('/admin/usuarios/?' + params);
         const table = document.getElementById('usuariosTabla'); table.replaceChildren();
         document.getElementById('pagina').textContent = 'Página ' + (page + 1);
         document.getElementById('anterior').disabled = page === 0; document.getElementById('siguiente').disabled = users.length < size;
@@ -64,10 +68,11 @@ if (adminForm) {
             }
             const actions = document.createElement('td'); const edit = document.createElement('button'); edit.type = 'button'; edit.textContent = 'Editar';
             edit.onclick = () => {
+                clearEditor();
                 for (const key of accountFields) adminForm.elements[key].value = user[key] || '';
                 adminForm.elements.rol.value = user.rol; document.getElementById('activo').checked = user.activo; document.getElementById('usuario_id').value = user.id;
                 document.getElementById('formTitle').textContent = 'Editar usuario'; document.getElementById('passwordField').hidden = true;
-                adminForm.elements.contrasena.required = false; adminForm.elements.contrasena.value = ''; adminForm.scrollIntoView({behavior: 'smooth'});
+                adminForm.elements.contrasena.required = false; adminForm.elements.contrasena.value = ''; editor.showModal();
             };
             const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Eliminar';
             remove.onclick = async () => {
@@ -79,16 +84,22 @@ if (adminForm) {
             actions.append(edit, remove); row.append(actions); table.append(row);
         }
     }
-    document.getElementById('cancelar').onclick = clearEditor;
+    document.getElementById('cancelar').onclick = () => editor.close();
+    editor.addEventListener('close', clearEditor);
+    document.getElementById('crearCuenta').onclick = () => {clearEditor(); editor.showModal();};
+    document.getElementById('buscarCuentas').onsubmit = async event => {event.preventDefault(); page = 0; try {await loadUsers();} catch(error) {message.textContent = error.message;}};
+    document.getElementById('limpiarCuentas').onclick = async () => {document.getElementById('buscarCuentas').reset(); page = 0; try {await loadUsers();} catch(error) {message.textContent = error.message;}};
     for (const [id, step] of [['anterior', -1], ['siguiente', 1]]) document.getElementById(id).onclick = async () => {
         page += step; try { await loadUsers(); } catch(error) { page -= step; message.textContent = error.message; }
     };
-    bindAccountForm('adminForm', 'adminMensaje', async (form, message) => {
+    bindAccountForm('adminForm', 'accountEditorMensaje', async (form) => {
         const id = document.getElementById('usuario_id').value; const body = {...identityData(form), rol: form.elements.rol.value};
         body.activo = document.getElementById('activo').checked;
         if (!id) body.contrasena = form.elements.contrasena.value;
         await accountRequest('/admin/usuarios/' + id, id ? 'PUT' : 'POST', body);
-        clearEditor(); await loadUsers(); message.textContent = 'Usuario guardado';
+        editor.close();
+        try { await loadUsers(); message.textContent = 'Usuario guardado'; }
+        catch (error) { message.textContent = 'Usuario guardado. ' + error.message; }
     });
     loadUsers().catch(error => {message.textContent = error.message;});
 }
