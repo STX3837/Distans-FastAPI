@@ -5,7 +5,7 @@
 <main class="catalog-page catalog-content">
 <a href="/inicio?q=">Volver al catálogo general</a>
 <section class="catalog-hero"><h1>{{ tienda.nombre }}</h1>
-{% if tienda_imagen %}<img class="store-cover" src="{{ tienda_imagen }}" alt="{{ tienda.nombre }}">{% endif %}
+<img class="store-cover" src="{{ tienda_imagen or '/static/tienda-predeterminada.svg' }}" alt="{{ tienda.nombre }}" onerror="this.onerror=null;this.src='/static/tienda-predeterminada.svg'">
 {% if tienda_categorias %}<p>Categorías: {{ tienda_categorias|join(' · ') }}</p>{% endif %}
 {% if tienda.descripcion %}<p>{{ tienda.descripcion }}</p>{% endif %}
 <p>{{ tienda.direccion or tienda.ubicacion or 'Dirección pendiente' }}</p>
