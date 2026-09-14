@@ -1,6 +1,7 @@
 """Inicio con productos y búsqueda geográfica: RF11 y RF05."""
 from math import ceil, radians, sin, cos, asin, sqrt
 import secrets
+from datetime import datetime
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -261,11 +262,18 @@ def comprador(request, db):
     return usuario
 
 
-def cantidades_carrito(request, db, usuario):
+def obtener_carrito(request, db, usuario):
     if usuario:
-        carrito = db.query(Carrito).filter_by(usuario_id=usuario.id).first()
-        return {str(item.producto_id): item.cantidad for item in carrito.items} if carrito else {}
-    return dict(request.session.get("carrito", {}))
+        return db.query(Carrito).filter_by(usuario_id=usuario.id).first()
+    sesion = request.session.get("carrito_sesion")
+    return db.query(Carrito).filter_by(usuario_id=None, sesion=sesion).first() if sesion else None
+
+
+def cantidades_carrito(request, db, usuario):
+    carrito = obtener_carrito(request, db, usuario)
+    if carrito:
+        return {str(item.producto_id): item.cantidad for item in carrito.items}
+    return dict(request.session.get("carrito", {})) if not usuario else {}
 
 
 def resumen_carrito(request, db, usuario):
@@ -305,33 +313,42 @@ def cambiar_carrito(request, db, producto_id, cantidad, sumar=False):
     if usuario:
         # Serializa cambios del mismo comprador, incluida la creación del primer carrito.
         db.query(Usuario).filter_by(id=usuario.id).with_for_update().one()
+    carrito = obtener_carrito(request, db, usuario)
+    if carrito:
+        db.query(Carrito).filter_by(id=carrito.id).with_for_update().one()
     cantidades = cantidades_carrito(request, db, usuario)
     nueva = cantidad + cantidades.get(str(producto_id), 0) if sumar else cantidad
+    if nueva > 999:
+        raise HTTPException(409, "La cantidad máxima por producto es 999")
     if nueva:
         producto = obtener_producto(db, producto_id)
         if not producto.disponible or nueva > producto.stock:
             raise HTTPException(409, "Producto no disponible o cantidad superior al stock")
         if str(producto_id) not in cantidades and len(cantidades) >= 50:
             raise HTTPException(409, "El carrito admite hasta 50 productos distintos")
-    if usuario:
-        carrito = db.query(Carrito).filter_by(usuario_id=usuario.id).first()
-        if carrito is None:
-            carrito = Carrito(usuario_id=usuario.id)
-            db.add(carrito)
+    if carrito is None:
+        sesion = None if usuario else secrets.token_urlsafe(32)
+        carrito = Carrito(usuario_id=usuario.id if usuario else None, sesion=sesion)
+        db.add(carrito)
+        db.flush()
+        if not usuario:
+            request.session["carrito_sesion"] = sesion
+            # Conserva los productos de las antiguas cestas almacenadas en la cookie.
+            for anterior, unidades in cantidades.items():
+                if db.get(Producto, int(anterior)):
+                    db.add(ProductoCarrito(carrito_id=carrito.id, producto_id=int(anterior), cantidad=unidades))
             db.flush()
-        item = db.query(ProductoCarrito).filter_by(carrito_id=carrito.id, producto_id=producto_id).first()
-        if not nueva:
-            if item: db.delete(item)
-        elif item:
-            item.cantidad = nueva
-        else:
-            db.add(ProductoCarrito(carrito_id=carrito.id, producto_id=producto_id, cantidad=nueva))
-        db.commit()
-        db.expire_all()
+            request.session.pop("carrito", None)
+    item = db.query(ProductoCarrito).filter_by(carrito_id=carrito.id, producto_id=producto_id).first()
+    if not nueva:
+        if item: db.delete(item)
+    elif item:
+        item.cantidad = nueva
     else:
-        if nueva: cantidades[str(producto_id)] = nueva
-        else: cantidades.pop(str(producto_id), None)
-        request.session["carrito"] = cantidades
+        db.add(ProductoCarrito(carrito_id=carrito.id, producto_id=producto_id, cantidad=nueva))
+    carrito.fecha_actualizacion = datetime.utcnow()
+    db.commit()
+    db.expire_all()
     return resumen_carrito(request, db, usuario)
 
 

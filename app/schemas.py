@@ -294,7 +294,7 @@ class CarritoCreate(CarritoBase):
 class CarritoResponse(CarritoBase):
     """Schema para respuesta de carrito"""
     id: int
-    usuario_id: int
+    usuario_id: Optional[int] = None
     fecha_creacion: datetime
     fecha_actualizacion: datetime
     items: List[ProductoCarritoResponse] = []

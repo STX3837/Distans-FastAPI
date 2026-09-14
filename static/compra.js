@@ -60,7 +60,9 @@
                 body: JSON.stringify(data)});
             const result = await response.json();
             if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : 'Revisa los datos de contacto y las direcciones.');
-            if (result.checkout_url) {window.location.assign(result.checkout_url); return;}
+            if (result.checkout_url) {feedback.textContent = 'Abriendo la pasarela de Stripe…'; window.location.assign(result.checkout_url); return;}
+            if (data.metodo === 'inmediato' && !result.pago_completado) throw new Error('No se pudo abrir la pasarela de pago. Vuelve a intentarlo.');
+            if (result.carrito_vaciado) window.dispatchEvent(new CustomEvent('cart-updated', {detail: {cantidad: 0}}));
             document.querySelector('.checkout-layout').hidden = true;
             document.querySelector('.checkout-steps').hidden = true;
             document.getElementById('purchaseSuccess').hidden = false;

@@ -160,6 +160,8 @@ def finalizar_compra(datos: Compra, request: Request, db: Session = Depends(get_
     codigo = "DIS-" + datos.token
     pedido = db.query(Pedido).filter_by(codigo_pedido=codigo).with_for_update().first()
     if pedido is None:
+        from app.routers.catalogo import obtener_carrito
+        carrito = obtener_carrito(request, db, usuario) if sesion["origen"] == "carrito" else None
         items, resumen = preparar_items(db, sesion["cantidades"])
         if huella(items, resumen) != sesion["huella"]:
             raise HTTPException(409, "El precio ha cambiado. Recarga la compra para revisar el importe.")
@@ -171,6 +173,7 @@ def finalizar_compra(datos: Compra, request: Request, db: Session = Depends(get_
                     db.rollback()
                     raise HTTPException(409, "No hay stock suficiente para esta compra.")
             pedido = Pedido(codigo_pedido=codigo, usuario_id=usuario.id if usuario else None,
+                carrito_id=carrito.id if carrito else None,
                 nombre_comprador=datos.nombre, apellidos_comprador=datos.apellidos, email_comprador=str(datos.email),
                 telefono=datos.telefono, direccion_envio=json.dumps(datos.envio.model_dump(), ensure_ascii=False),
                 direccion_facturacion=json.dumps(datos.facturacion.model_dump(), ensure_ascii=False),
@@ -190,7 +193,10 @@ def finalizar_compra(datos: Compra, request: Request, db: Session = Depends(get_
     if pedido.metodo_pago != MetodoPago.EFECTIVO:
         checkout_url = abrir_pago(db, pedido)
     elif pedido.estado == EstadoPedido.PENDIENTE:
+        from app.stripe_payments import vaciar_carrito_pedido
         pedido.estado = EstadoPedido.CONFIRMADO
+        vaciar_carrito_pedido(db, pedido)
         db.commit()
     return dict(codigo=pedido.codigo_pedido, estado=pedido.estado.value,
-                pago_completado=pedido.pago_completado, total=f"{pedido.total:.2f}", moneda="EUR", checkout_url=checkout_url)
+                pago_completado=pedido.pago_completado, total=f"{pedido.total:.2f}", moneda="EUR", checkout_url=checkout_url,
+                carrito_vaciado=pedido.carrito_vaciado)

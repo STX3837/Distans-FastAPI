@@ -1,7 +1,12 @@
 (() => {
     const status = document.getElementById('mapStatus');
     let map;
+    let activeTab;
     function showTab(name) {
+        activeTab = name;
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', name);
+        window.history.replaceState(null, '', url);
         document.querySelectorAll('.market-panel').forEach(panel => {panel.hidden = panel.id !== 'panel-' + name;});
         document.querySelectorAll('[data-tab]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.tab === name)));
         document.querySelectorAll('[data-tab]').forEach(link => {if (link.dataset.tab === name) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');});
@@ -56,12 +61,13 @@
     const params = new URLSearchParams(window.location.search);
     if (params.has('latitud') && params.has('longitud')) centre = L.latLng(Number(params.get('latitud')), Number(params.get('longitud')));
     radiusSelect.value = params.get('radio') || '0';
-    function submitRadius() {
+    function submitRadius(tab = activeTab) {
         const url = new URL(window.location.href);
         url.searchParams.set('latitud', centre.lat);
         url.searchParams.set('longitud', centre.lng);
         url.searchParams.set('radio', radiusSelect.value);
         url.searchParams.set('pagina', '1');
+        url.searchParams.set('tab', tab);
         window.location.assign(url);
     }
     document.querySelector('[data-geo="latitud"]').value = centre.lat;
@@ -76,26 +82,27 @@
         if (radius) radiusCircle = L.circle(centre, {radius, color: '#168cff', weight: 1, fillOpacity: .04}).addTo(map);
         status.textContent = markers.size + (markers.size === 1 ? ' tienda en el mapa.' : ' tiendas en el mapa.') + (radius ? ' Radio: ' + radius / 1000 + ' km.' : '');
     }
-    function selectCentre(point) {
+    function selectCentre(point, tab = activeTab) {
         centre = L.latLng(point); centreMarker.setLatLng(centre);
         map.setView(centre, 14, {animate: false});
         document.getElementById('selectLocation').textContent = 'Cambiar ubicación';
-        submitRadius();
+        submitRadius(tab);
     }
-    radiusSelect.addEventListener('change', submitRadius);
+    radiusSelect.addEventListener('change', () => submitRadius());
     const dialog = document.getElementById('locationDialog');
     document.getElementById('selectLocation').addEventListener('click', () => dialog.showModal());
     document.getElementById('closeLocation').addEventListener('click', () => dialog.close());
     document.getElementById('pickOnMap').addEventListener('click', () => {
+        const returnTab = activeTab;
         dialog.close(); showTab('mapa'); status.textContent = 'Pulsa en el mapa para seleccionar tu ubicación.';
-        map.once('click', event => selectCentre(event.latlng));
+        map.once('click', event => selectCentre(event.latlng, returnTab));
     });
     document.getElementById('useGeolocation').addEventListener('click', () => {
         const error = document.getElementById('locationError');
         if (!navigator.geolocation) {error.textContent = 'Tu navegador no permite obtener la ubicación.'; return;}
         error.textContent = 'Obteniendo ubicación…';
         navigator.geolocation.getCurrentPosition(position => {
-            dialog.close(); error.textContent = ''; showTab('mapa');
+            dialog.close(); error.textContent = '';
             selectCentre([position.coords.latitude, position.coords.longitude]);
         }, () => {error.textContent = 'No se pudo obtener la ubicación. Puedes seleccionarla en el mapa.';}, {timeout: 10000});
     });

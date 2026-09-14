@@ -14,6 +14,47 @@ from test_compra_directa import product, start, submit
 pytestmark = pytest.mark.usefixtures('stripe_gateway')
 
 
+@pytest.mark.parametrize('registered', [False, True])
+@pytest.mark.parametrize('confirmation', ['webhook', 'return', 'cash', 'expired'])
+def test_cart_cleared_only_when_order_confirmed(client, db_session, product, stripe_gateway, user_factory, registered, confirmation):
+    import re
+    if registered:
+        buyer = user_factory(email='cart-payment-buyer@example.com')
+        client.post('/api/login', json={'email': buyer.email, 'contrasena': 'clave12345'})
+    payload = start(client, product)
+    headers = {'X-CSRF-Token': client.cookies.get('csrf_token')}
+    assert client.post(f'/api/carrito/productos/{product.id}', json={'cantidad': 2}, headers=headers).status_code == 200
+    page = client.get('/compra/carrito')
+    payload['token'] = re.search(r'data-token="([^"]+)"', page.text)[1]
+    if confirmation == 'cash':
+        payload['metodo'] = 'contrarrembolso'
+    response = submit(client, payload)
+    assert response.status_code == 200
+    if confirmation != 'cash':
+        assert response.json()['checkout_url'].startswith('https://checkout.stripe.com/')
+        assert client.get('/api/carrito').json()['cantidad'] == 2
+        session = next(iter(stripe_gateway.sessions.values()))
+        if confirmation == 'expired':
+            session.update(status='expired')
+            assert event(client, session, 'checkout.session.expired').status_code == 200
+            assert client.get('/api/carrito').json()['cantidad'] == 2
+            return
+        session.update(status='complete', payment_status='paid')
+        if confirmation == 'webhook':
+            assert event(client, session).status_code == 200
+        else:
+            assert client.get('/pago/resultado').status_code == 200
+    assert client.get('/api/carrito').json()['cantidad'] == 0
+    assert db_session.query(Pedido).one().carrito_vaciado
+    # Una notificación duplicada no elimina productos añadidos después de comprar.
+    assert client.post(f'/api/carrito/productos/{product.id}', json={'cantidad': 1}, headers=headers).status_code == 200
+    if confirmation == 'webhook':
+        assert event(client, session).status_code == 200
+    else:
+        assert submit(client, payload).status_code == 200
+    assert client.get('/api/carrito').json()['cantidad'] == 1
+
+
 def event(client, session, event_type='checkout.session.completed', valid=True):
     payload = json.dumps({'id': 'evt_test', 'object': 'event', 'type': event_type, 'data': {'object': session}})
     stamp = int(time.time())

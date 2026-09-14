@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Distans{% endblock %}</title>
     <link rel="stylesheet" href="/static/auth.css">
+    <link rel="stylesheet" href="/static/cesta.css?v=1">
     {% block styles %}{% endblock %}
 <link rel="icon" type="image/png" href="/static/logo.png">
 </head>
@@ -53,6 +54,11 @@
     {% endblock %}
 
     {% block content %}{% endblock %}
+
+    {% if not es_vendedor and not es_admin %}
+    <a class="persistent-cart" href="/carrito">Carrito <span data-cart-count aria-live="polite">0</span></a>
+    <script src="/static/cesta.js?v=1"></script>
+    {% endif %}
 
     <script src="/static/auth.js"></script>
     {% block scripts %}{% endblock %}
