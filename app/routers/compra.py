@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import secrets
+from datetime import datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Literal
 
@@ -65,11 +66,6 @@ class Compra(BaseModel):
     @classmethod
     def limpiar(cls, value):
         return value.strip() if isinstance(value, str) else value
-
-
-def procesar_pago_simulado(pedido):
-    """Sustituto de la API: siempre tiene éxito y no recoge datos bancarios."""
-    return True
 
 
 def preparar_items(db, cantidades):
@@ -158,6 +154,9 @@ def finalizar_compra(datos: Compra, request: Request, db: Session = Depends(get_
         raise HTTPException(409, "La compra ha caducado. Vuelve a seleccionar el producto.")
     if sesion["usuario_id"] != (usuario.id if usuario else None):
         raise HTTPException(409, "La sesión ha cambiado. Vuelve a iniciar la compra.")
+    from app.stripe_payments import configuracion, abrir_pago
+    if datos.metodo == "inmediato":
+        configuracion()
     codigo = "DIS-" + datos.token
     pedido = db.query(Pedido).filter_by(codigo_pedido=codigo).with_for_update().first()
     if pedido is None:
@@ -177,6 +176,7 @@ def finalizar_compra(datos: Compra, request: Request, db: Session = Depends(get_
                 direccion_facturacion=json.dumps(datos.facturacion.model_dump(), ensure_ascii=False),
                 metodo_pago=MetodoPago.EFECTIVO if datos.metodo == "contrarrembolso" else MetodoPago.TARJETA_CREDITO,
                 estado=EstadoPedido.PENDIENTE, moneda="EUR", pago_completado=False,
+                reserva_expira=datetime.utcnow() + timedelta(minutes=31) if datos.metodo == "inmediato" else None,
                 **{k: resumen[k] for k in ("subtotal", "descuento", "impuesto", "coste_entrega", "total")})
             for item in items:
                 pedido.items.append(ProductoPedido(producto_id=item["producto"]["id"], cantidad=item["cantidad"],
@@ -186,10 +186,11 @@ def finalizar_compra(datos: Compra, request: Request, db: Session = Depends(get_
         except IntegrityError:
             db.rollback()
             pedido = db.query(Pedido).filter_by(codigo_pedido=codigo).one()
-    if pedido.estado == EstadoPedido.PENDIENTE:
-        if pedido.metodo_pago != MetodoPago.EFECTIVO:
-            pedido.pago_completado = procesar_pago_simulado(pedido)
+    checkout_url = None
+    if pedido.metodo_pago != MetodoPago.EFECTIVO:
+        checkout_url = abrir_pago(db, pedido)
+    elif pedido.estado == EstadoPedido.PENDIENTE:
         pedido.estado = EstadoPedido.CONFIRMADO
         db.commit()
     return dict(codigo=pedido.codigo_pedido, estado=pedido.estado.value,
-                pago_completado=pedido.pago_completado, total=f"{pedido.total:.2f}", moneda="EUR")
+                pago_completado=pedido.pago_completado, total=f"{pedido.total:.2f}", moneda="EUR", checkout_url=checkout_url)

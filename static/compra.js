@@ -17,7 +17,7 @@
             if (index === step) item.setAttribute('aria-current', 'step'); else item.removeAttribute('aria-current');
         });
         steps[step].querySelector('input, button').focus();
-        if (step === 2) {
+        if (step === steps.length - 1) {
             const review = document.getElementById('buyerReview');
             review.replaceChildren();
             const data = new FormData(form);
@@ -39,7 +39,7 @@
     form.noValidate = true;
     form.addEventListener('submit', async event => {
         event.preventDefault();
-        if (current !== 2) {if (valid(current)) show(current + 1); return;}
+        if (current !== steps.length - 1) {if (valid(current)) show(current + 1); return;}
         for (let index = 0; index < steps.length; index++) {
             if (![...steps[index].querySelectorAll('input')].every(input => input.checkValidity())) {show(index); valid(index); return;}
         }
@@ -60,11 +60,12 @@
                 body: JSON.stringify(data)});
             const result = await response.json();
             if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : 'Revisa los datos de contacto y las direcciones.');
+            if (result.checkout_url) {window.location.assign(result.checkout_url); return;}
             document.querySelector('.checkout-layout').hidden = true;
             document.querySelector('.checkout-steps').hidden = true;
             document.getElementById('purchaseSuccess').hidden = false;
             document.getElementById('successDetails').textContent = 'Código: ' + result.codigo + '. Total: ' + result.total + ' €. ' +
-                (result.pago_completado ? 'Pago simulado completado.' : 'Pago pendiente al recibir el pedido.');
+                (result.pago_completado ? 'Pago completado.' : 'Pago pendiente al recibir el pedido.');
         } catch (error) {feedback.textContent = error.message || 'No se pudo confirmar. Puedes volver a intentarlo.';}
         finally {pay.disabled = false;}
     });

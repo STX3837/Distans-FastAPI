@@ -1,0 +1,10 @@
+﻿{% extends "base.html" %}
+{% block title %}Estado del pago - Distans{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css">{% endblock %}
+{% block content %}<main class="catalog-page"><section class="product-detail">
+{% if pedido.pago_completado %}<h1>Pago completado</h1><p>Tu pedido está confirmado.</p>
+{% elif pedido.reserva_liberada %}<h1>Reserva caducada</h1><p>No se ha completado el pago. Puedes iniciar otra compra.</p>
+{% else %}<h1>Pago pendiente de confirmación</h1><p>Si acabas de pagar, estamos esperando la confirmación de Stripe. Si has vuelto sin pagar, tu reserva caducará automáticamente.</p><a href="/pago/resultado">Consultar estado</a>{% endif %}
+<p>Pedido: {{ pedido.codigo_pedido }}</p><p>Total: {{ '%.2f'|format(pedido.total) }} €</p>
+<a href="/inicio?q=">Volver al catálogo</a></section></main>{% endblock %}
+{% block scripts %}{% if not pedido.pago_completado and not pedido.reserva_liberada %}<script src="/static/pago_resultado.js?v=1"></script>{% endif %}{% endblock %}
