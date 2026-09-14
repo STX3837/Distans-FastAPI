@@ -168,9 +168,8 @@ def pagina_cuenta(request: Request, db: Session = Depends(get_db)):
     if not request.session.get("usuario"):
         return RedirectResponse("/login", status_code=303)
     usuario = _obtener_usuario_actual(request, db)
-    return templates.TemplateResponse(request=request, name="cuenta.html", context={
-        "usuario": usuario, "user_name": usuario.nombre, "es_admin": usuario.rol == RolUsuario.ADMIN,
-    })
+    from app.routers.catalogo import pagina_publica
+    return pagina_publica(request, db, "cuenta.html", {"usuario": usuario})
 
 
 @admin_router.get("/panel", response_class=HTMLResponse)

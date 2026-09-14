@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Finalizar compra - Distans{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/static/catalogo.css"><link rel="stylesheet" href="/static/compra.css">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css"><link rel="stylesheet" href="/static/compra.css?v=3">{% endblock %}
 {% block content %}
 <main class="catalog-page checkout">
 <a href="/inicio?q=">Volver al catálogo</a>
@@ -24,8 +24,8 @@
 <fieldset data-step="2" hidden><legend>3. Revisión y pago</legend>
 <div id="buyerReview"></div>
 <h2>Método de pago</h2>
-<label class="payment-option"><input type="radio" name="metodo" value="inmediato" checked> Pagar ahora (pago simulado)</label>
-<label class="payment-option"><input type="radio" name="metodo" value="contrarrembolso"> Contrarrembolso: pagar al recibir</label>
+<label class="payment-option"><span class="payment-copy"><strong>Pagar ahora</strong><small>Pago simulado · Sin cargos reales</small></span><input type="radio" name="metodo" value="inmediato" checked></label>
+<label class="payment-option"><span class="payment-copy"><strong>Contrarrembolso</strong><small>Paga cuando recibas tu pedido</small></span><input type="radio" name="metodo" value="contrarrembolso"></label>
 <p>El pago inmediato es una simulación y no realiza ningún cargo real. El pedido se registra antes de procesar el pago.</p>
 <button type="button" data-back>Editar direcciones</button><button type="submit" id="payButton">Pagar {{ '%.2f'|format(resumen.total) }} €</button>
 </fieldset>
