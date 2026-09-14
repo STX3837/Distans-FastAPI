@@ -362,7 +362,13 @@ class PedidoUpdate(BaseModel):
 class PedidoResponse(PedidoBase):
     """Schema para respuesta de pedido"""
     id: int
-    usuario_id: int
+    usuario_id: Optional[int] = None
+    descuento: float = 0
+    nombre_comprador: str = ""
+    apellidos_comprador: str = ""
+    email_comprador: str = ""
+    moneda: str = "EUR"
+    pago_completado: bool = False
     fecha: datetime
     fecha_creacion: datetime
     fecha_actualizacion: datetime

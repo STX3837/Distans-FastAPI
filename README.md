@@ -146,3 +146,27 @@ Las categorías de tienda son un dato derivado de sus productos, sin selección 
 
 Pruebas: `docker compose exec -T web python -m pytest -q`, con SQLite aislada de la base local.
 
+
+## Pagos con Stripe
+
+La compra directa y la del carrito admiten invitados y compradores registrados. El proceso tiene tres pasos como máximo: datos y direcciones, revisión y pago alojado en Stripe. El contrarrembolso conserva el pago pendiente y no abre Stripe.
+
+Configura en `.env` las variables `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` y `PUBLIC_BASE_URL`. Usa inicialmente una clave `sk_test_...`. No incluyas claves reales en el repositorio ni en JavaScript. No hace falta una clave pública porque se usa Stripe Checkout alojado. En producción, `PUBLIC_BASE_URL` debe usar HTTPS y `ENVIRONMENT=production` activa las cookies de sesión seguras.
+
+Instala las dependencias actualizadas o reconstruye el contenedor con `docker compose up --build`. La migración de los nuevos campos de pago se aplica al arrancar sobre PostgreSQL.
+
+Para probar localmente con Stripe CLI:
+
+```sh
+stripe listen --forward-to localhost:8001/api/stripe/webhook
+```
+
+Copia el secreto `whsec_...` mostrado por la CLI en `STRIPE_WEBHOOK_SECRET` y reinicia la aplicación. En Stripe Checkout, usa la tarjeta de prueba `4242 4242 4242 4242`, una fecha futura y cualquier CVC de tres dígitos. Comprueba que el pedido pasa de pendiente a confirmado al llegar el webhook.
+
+En Stripe, configura el endpoint HTTPS `/api/stripe/webhook` para los eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded` y `checkout.session.expired`. Usa el secreto específico del endpoint desplegado, distinto del de la CLI.
+
+El servidor calcula el importe en céntimos de EUR, guarda el pedido y reserva el stock antes de crear la sesión de Stripe. Cada pedido utiliza una clave de idempotencia. Las reservas duran aproximadamente 30 minutos y se liberan una sola vez cuando Stripe confirma que la sesión ha caducado. Un proceso periódico reconcilia reservas vencidas; ante fallos de red conserva la reserva hasta verificar Stripe. La vuelta del navegador a `/pago/resultado` muestra el estado y no confirma el pago por sí misma. Los webhooks verifican la firma, la referencia, la moneda y el importe antes de marcar el pago como completado.
+
+La aplicación no recoge números de tarjeta ni CVC. Únicamente transmite a Stripe el correo, los artículos, los importes y una referencia interna del pedido. Los impuestos siguen siendo configurables con `CHECKOUT_IVA` y el envío con `CHECKOUT_ENVIO`.
+
+Referencias: [Stripe Checkout](https://docs.stripe.com/payments/checkout/how-checkout-works), [confirmación de pedidos](https://docs.stripe.com/checkout/fulfillment), [reservas de inventario](https://docs.stripe.com/payments/checkout/managing-limited-inventory) y [verificación de firmas](https://docs.stripe.com/webhooks/signature).

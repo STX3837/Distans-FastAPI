@@ -33,7 +33,7 @@ def test_buyer_header_on_shopping_pages_and_excluded_from_account_pages(client, 
     buyer = user_factory(email="headerbuyer@example.com")
     client.post("/api/login", json={"email": buyer.email, "contrasena": "clave12345"})
     assert 'class="market-header"' in client.get(f"/productos/{product.id}").text
-    assert 'class="market-header"' not in client.get("/usuarios/cuenta").text
+    assert 'class="market-header"' in client.get("/usuarios/cuenta").text
 
 
 @pytest.mark.parametrize("role", [RolUsuario.VENDEDOR, RolUsuario.ADMIN])

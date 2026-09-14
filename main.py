@@ -2,10 +2,13 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 import os
+import asyncio
+from contextlib import suppress
 from app.database import engine
 from app.models import Base, Tienda
 from app.routers import users, auth, catalogo, gestion, admin_pedidos
 from app.password_reset import router as password_reset_router
+from app.migrations import actualizar_pedidos
 
 # Crear la aplicación FastAPI
 app = FastAPI(
@@ -32,12 +35,22 @@ if os.path.exists("static"):
 
 # Crear las tablas en la BD (En un proyecto real se usan migraciones con 'Alembic')
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
     Base.metadata.create_all(bind=engine)
     # create_all no añade índices a tablas existentes.
     for index in Tienda.__table__.indexes:
         if index.name == "uq_tiendas_vendedor_id":
             index.create(bind=engine, checkfirst=True)
+    actualizar_pedidos(engine)
+    from app.payment_worker import vigilar_reservas
+    app.state.payment_worker = asyncio.create_task(vigilar_reservas())
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    app.state.payment_worker.cancel()
+    with suppress(asyncio.CancelledError):
+        await app.state.payment_worker
 
 # Registrar routers
 app.include_router(catalogo.router)

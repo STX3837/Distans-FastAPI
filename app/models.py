@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean, Float, ForeignKey, Text, CheckConstraint, Index
+
+from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean, Float, Numeric, ForeignKey, Text, CheckConstraint, Index
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 from geoalchemy2 import Geometry
@@ -249,10 +250,19 @@ class Pedido(Base):
     estado = Column(Enum(EstadoPedido), default=EstadoPedido.PENDIENTE, nullable=False)
     
     # Detalles financieros
-    subtotal = Column(Float, nullable=False)
-    impuesto = Column(Float, default=0.0, nullable=False)
-    coste_entrega = Column(Float, default=0.0, nullable=False)
-    total = Column(Float, nullable=False)
+    subtotal = Column(Numeric(12, 2), nullable=False)
+    descuento = Column(Numeric(12, 2), default=0, nullable=False)
+    nombre_comprador = Column(String, nullable=False, default="")
+    apellidos_comprador = Column(String, nullable=False, default="")
+    email_comprador = Column(String, nullable=False, default="")
+    moneda = Column(String(3), default="EUR", nullable=False)
+    pago_completado = Column(Boolean, default=False, nullable=False)
+    stripe_session_id = Column(String, unique=True, nullable=True)
+    reserva_expira = Column(DateTime, nullable=True)
+    reserva_liberada = Column(Boolean, default=False, nullable=False)
+    impuesto = Column(Numeric(12, 2), default=0, nullable=False)
+    coste_entrega = Column(Numeric(12, 2), default=0, nullable=False)
+    total = Column(Numeric(12, 2), nullable=False)
     
     # Información de envío y facturación
     metodo_pago = Column(Enum(MetodoPago), nullable=False)
@@ -265,7 +275,7 @@ class Pedido(Base):
     fecha_actualizacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     # Usuario que realiza el pedido
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
     
     # Relaciones
     usuario = relationship("Usuario", back_populates="pedidos")
@@ -282,8 +292,8 @@ class ProductoPedido(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     cantidad = Column(Integer, nullable=False)
-    precio_unitario = Column(Float, nullable=False)
-    total = Column(Float, nullable=False)
+    precio_unitario = Column(Numeric(12, 2), nullable=False)
+    total = Column(Numeric(12, 2), nullable=False)
     
     # Metadatos
     fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
