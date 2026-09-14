@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Mi cuenta - Distans{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css">{% endblock %}
 {% block content %}
 <main class="page-wrap"><section class="card account-card"><h1>Mi cuenta</h1>
 <p>Creación: {{ usuario.fecha_creacion.strftime('%d/%m/%Y %H:%M') }} UTC</p>

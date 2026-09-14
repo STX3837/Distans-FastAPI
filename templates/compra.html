@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Finalizar compra - Distans{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css"><link rel="stylesheet" href="/static/compra.css?v=3">{% endblock %}
+{% block content %}
+<main class="catalog-page checkout">
+<a href="/inicio?q=">Volver al catálogo</a>
+<h1>Finalizar compra</h1>
+<p class="security-note">Revisa tus datos y el importe antes de confirmar. No solicitamos ni almacenamos datos bancarios.</p>
+<ol class="checkout-steps" aria-label="Pasos de la compra"><li aria-current="step">Datos del comprador</li><li>Direcciones</li><li>Revisión y pago</li></ol>
+<div class="checkout-layout">
+<form id="checkoutForm" data-token="{{ token_compra }}">
+<fieldset data-step="0"><legend>1. Datos del comprador</legend>
+{% for campo, etiqueta, tipo, autocomplete in [('nombre', 'Nombre', 'text', 'given-name'), ('apellidos', 'Apellidos', 'text', 'family-name'), ('email', 'Correo electrónico', 'email', 'email'), ('telefono', 'Teléfono', 'tel', 'tel')] %}
+<label for="{{ campo }}">{{ etiqueta }}</label><input id="{{ campo }}" name="{{ campo }}" type="{{ tipo }}" autocomplete="{{ autocomplete }}" maxlength="{{ 30 if campo == 'telefono' else 150 if campo == 'apellidos' else 100 if campo == 'nombre' else 254 }}" value="{{ comprador[campo] or '' if comprador else '' }}" required {% if campo == 'telefono' %}minlength="5" pattern="[+0-9 ()\-]+"{% endif %}>
+{% endfor %}
+<button type="button" data-next>Continuar a direcciones</button></fieldset>
+<fieldset data-step="1" hidden><legend>2. Direcciones</legend>
+{% for grupo, titulo in [('envio', 'Dirección de envío'), ('facturacion', 'Dirección de facturación')] %}
+<h2>{{ titulo }}</h2>
+{% for campo, etiqueta, autocomplete, limite in [('direccion', 'Dirección', 'address-line1', 250), ('ciudad', 'Ciudad', 'address-level2', 100), ('codigo_postal', 'Código postal', 'postal-code', 20)] %}
+<label for="{{ grupo }}_{{ campo }}">{{ etiqueta }}</label><input id="{{ grupo }}_{{ campo }}" name="{{ grupo }}_{{ campo }}" autocomplete="{{ 'shipping' if grupo == 'envio' else 'billing' }} {{ autocomplete }}" maxlength="{{ limite }}" value="{{ comprador[campo] or '' if comprador else '' }}" required>
+{% endfor %}{% endfor %}
+<button type="button" data-back>Volver</button><button type="button" data-next>Revisar compra</button></fieldset>
+<fieldset data-step="2" hidden><legend>3. Revisión y pago</legend>
+<div id="buyerReview"></div>
+<h2>Método de pago</h2>
+<label class="payment-option"><span class="payment-copy"><strong>Pagar ahora</strong><small>Pago simulado · Sin cargos reales</small></span><input type="radio" name="metodo" value="inmediato" checked></label>
+<label class="payment-option"><span class="payment-copy"><strong>Contrarrembolso</strong><small>Paga cuando recibas tu pedido</small></span><input type="radio" name="metodo" value="contrarrembolso"></label>
+<p>El pago inmediato es una simulación y no realiza ningún cargo real. El pedido se registra antes de procesar el pago.</p>
+<button type="button" data-back>Editar direcciones</button><button type="submit" id="payButton">Pagar {{ '%.2f'|format(resumen.total) }} €</button>
+</fieldset>
+<p id="checkoutFeedback" role="status" aria-live="polite"></p>
+</form>
+<aside class="order-summary" aria-label="Resumen del pedido"><h2>Tu compra</h2>
+{% for item in items_compra %}<p><strong>{{ item.producto.nombre }}</strong></p><p>{{ item.cantidad }} unidades × {{ '%.2f'|format(item.importes.precio_unitario) }} €</p>{% endfor %}
+<dl><dt>Subtotal sin descuento</dt><dd>{{ '%.2f'|format(resumen.subtotal) }} €</dd><dt>Descuento</dt><dd>−{{ '%.2f'|format(resumen.descuento) }} €</dd><dt>IVA ({{ resumen.iva|float }} %)</dt><dd>{{ '%.2f'|format(resumen.impuesto) }} €</dd><dt>Envío</dt><dd>{{ '%.2f'|format(resumen.coste_entrega) }} €</dd><dt class="summary-total">Total (EUR)</dt><dd class="summary-total" id="checkoutTotal">{{ '%.2f'|format(resumen.total) }} €</dd></dl>
+<p>El total incluye impuestos y envío.</p></aside>
+</div>
+<section id="purchaseSuccess" hidden role="status"><h2>Pedido confirmado</h2><p id="successDetails"></p><a href="/inicio?q=">Seguir comprando</a></section>
+</main>
+{% endblock %}
+{% block scripts %}<script src="/static/compra.js"></script>{% endblock %}
