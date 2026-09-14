@@ -4,7 +4,8 @@ from app.models import Categoria, Producto, RolUsuario, Tienda
 def test_store_catalog_is_public_and_keeps_filters_and_pagination(client, db_session, user_factory):
     seller = user_factory(rol=RolUsuario.VENDEDOR)
     shop = Tienda(nombre="Tienda Uno", vendedor_id=seller.id)
-    other = Tienda(nombre="Tienda Dos", vendedor_id=seller.id)
+    other_seller = user_factory(email="otherstoreseller@example.com", rol=RolUsuario.VENDEDOR)
+    other = Tienda(nombre="Tienda Dos", vendedor_id=other_seller.id)
     db_session.add_all([shop, other])
     db_session.flush()
     for i in range(26):

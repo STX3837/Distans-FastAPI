@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean, Float, Numeric, ForeignKey, Text, CheckConstraint
+
+from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean, Float, Numeric, ForeignKey, Text, CheckConstraint, Index
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 from geoalchemy2 import Geometry
@@ -108,6 +109,7 @@ class Tienda(Base):
     nombre, descripción, ubicación, dirección, horario, imagen.
     """
     __tablename__ = "tiendas"
+    __table_args__ = (Index("uq_tiendas_vendedor_id", "vendedor_id", unique=True),)
     
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String, nullable=False, index=True)
@@ -128,6 +130,10 @@ class Tienda(Base):
     vendedor = relationship("Usuario", back_populates="tiendas", foreign_keys=[vendedor_id])
     productos = relationship("Producto", back_populates="tienda", cascade="all, delete-orphan")
     coordenadas = relationship("CoordenadasTienda", back_populates="tienda", uselist=False, cascade="all, delete-orphan")
+    @property
+    def categorias(self):
+        """Categorías únicas de todos los productos de la tienda."""
+        return sorted({producto.categoria for producto in self.productos}, key=lambda categoria: categoria.value)
 
 
 class CoordenadasTienda(Base):

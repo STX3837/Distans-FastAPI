@@ -1,0 +1,14 @@
+{% extends "gestion_base.html" %}
+{% block title %}{{ 'Editar información' if tienda_gestion else 'Registrar tienda' }} - Distans{% endblock %}
+{% block content %}<main class="catalog-page"><h1>{{ 'Editar información de la tienda' if tienda_gestion else 'Registrar tienda' }}</h1>
+<form class="management-form" id="storeForm" data-store-id="{{ tienda_gestion.id if tienda_gestion else '' }}">
+{% for campo, etiqueta in [('nombre','Nombre'),('direccion','Dirección'),('ubicacion','Ciudad o zona'),('horario','Horario'),('imagen','Imagen (URL o ruta local)')] %}<label>{{ etiqueta }}<input name="{{ campo }}" value="{{ tienda_gestion[campo] or '' if tienda_gestion else '' }}" {% if campo in ['nombre','direccion'] %}required{% endif %} maxlength="{{ 1000 if campo == 'imagen' else 160 if campo == 'nombre' else 200 if campo == 'ubicacion' else 300 }}"></label>{% endfor %}
+<label>Descripción<textarea name="descripcion" maxlength="5000">{{ tienda_gestion.descripcion or '' if tienda_gestion else '' }}</textarea></label>
+<label>Seleccionar foto del ordenador<input type="file" data-image-file accept="image/jpeg,image/png,image/webp"><span>JPG, PNG o WebP. Máximo 5 MB.</span></label>
+<img data-image-preview hidden alt="Vista previa de la tienda" style="max-width:100%;max-height:200px">
+{% if es_admin %}<label>Vendedor propietario<select name="vendedor_id" required><option value="">Selecciona vendedor</option>{% for vendedor in vendedores %}<option value="{{ vendedor.id }}" {% if tienda_gestion and tienda_gestion.vendedor_id == vendedor.id %}selected{% endif %}>{{ vendedor.nombre }} · {{ vendedor.email }}</option>{% endfor %}</select></label>{% endif %}
+<section><h2>Categorías de la tienda</h2><p>{{ tienda_gestion.categorias|join(' · ') if tienda_gestion and tienda_gestion.categorias else 'Sin categorías todavía.' }}</p><p>Se calculan automáticamente a partir de todos sus productos. Para cambiarlas, edita la categoría de los productos desde Productos.</p></section>
+<h2>Ubicación en el mapa</h2><p>Pulsa en el mapa o introduce las coordenadas para ubicar físicamente tu tienda.</p>
+<div id="storeLocationMap"></div><div class="coordinate-fields"><label>Latitud<input name="latitud" type="number" step="any" min="-90" max="90" required value="{{ tienda_gestion.latitud if tienda_gestion and tienda_gestion.latitud is not none else '' }}"></label><label>Longitud<input name="longitud" type="number" step="any" min="-180" max="180" required value="{{ tienda_gestion.longitud if tienda_gestion and tienda_gestion.longitud is not none else '' }}"></label></div>
+<button type="submit" class="add-cart">Guardar tienda</button>{% if tienda_gestion %}<button type="button" class="danger-button" data-delete-store="{{ tienda_gestion.id }}">Eliminar tienda</button>{% endif %}
+<p data-management-status role="status" aria-live="polite"></p></form></main>{% endblock %}

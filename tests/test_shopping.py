@@ -42,7 +42,7 @@ def test_other_roles_do_not_use_buyer_header(client, product, user_factory, role
     client.post("/api/login", json={"email": user.email, "contrasena": "clave12345"})
     for path in ("/inicio", f"/productos/{product.id}", f"/tiendas/{product.tienda_id}"):
         response = client.get(path)
-        assert response.status_code == 200
+        assert response.status_code == (404 if role == RolUsuario.VENDEDOR and path != "/inicio" else 200)
         assert 'class="market-header"' not in response.text
 
 
@@ -100,8 +100,8 @@ def test_seller_cannot_add_to_cart(client, product, db_session):
     assert client.post(f"/api/carrito/productos/{product.id}", json={"cantidad": 1}, headers=headers(client)).status_code == 403
 
 
-def test_radius_filters_before_pagination_and_returns_all_stores(client, product, db_session):
-    seller = product.tienda.vendedor
+def test_radius_filters_before_pagination_and_returns_all_stores(client, product, db_session, user_factory):
+    seller = user_factory(email="madridseller@example.com", rol=RolUsuario.VENDEDOR)
     far = Tienda(nombre="Tienda Madrid", vendedor_id=seller.id)
     db_session.add(far)
     db_session.flush()
@@ -131,8 +131,9 @@ def test_only_valid_offers_are_published(client, product, db_session, offer, dis
     assert data["precio_oferta"] == (offer if discount is not None else None)
 
 
-def test_shop_search_includes_shops_without_products(client, product, db_session):
-    shop = Tienda(nombre="Tienda vacía Carmona", vendedor_id=product.tienda.vendedor_id)
+def test_shop_search_includes_shops_without_products(client, product, db_session, user_factory):
+    seller = user_factory(email="emptyseller@example.com", rol=RolUsuario.VENDEDOR)
+    shop = Tienda(nombre="Tienda vacía Carmona", vendedor_id=seller.id)
     db_session.add(shop)
     db_session.flush()
     db_session.add(CoordenadasTienda(tienda_id=shop.id, latitud=37.4712, longitud=-5.646))

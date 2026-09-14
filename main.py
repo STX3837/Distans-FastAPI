@@ -5,8 +5,8 @@ import os
 import asyncio
 from contextlib import suppress
 from app.database import engine
-from app.models import Base
-from app.routers import users, auth, catalogo
+from app.models import Base, Tienda
+from app.routers import users, auth, catalogo, gestion, admin_pedidos
 from app.password_reset import router as password_reset_router
 from app.migrations import actualizar_pedidos
 
@@ -37,6 +37,10 @@ if os.path.exists("static"):
 @app.on_event("startup")
 async def startup_event():
     Base.metadata.create_all(bind=engine)
+    # create_all no añade índices a tablas existentes.
+    for index in Tienda.__table__.indexes:
+        if index.name == "uq_tiendas_vendedor_id":
+            index.create(bind=engine, checkfirst=True)
     actualizar_pedidos(engine)
     from app.payment_worker import vigilar_reservas
     app.state.payment_worker = asyncio.create_task(vigilar_reservas())
@@ -50,6 +54,8 @@ async def shutdown_event():
 
 # Registrar routers
 app.include_router(catalogo.router)
+app.include_router(gestion.router)
+app.include_router(admin_pedidos.router)
 app.include_router(auth.router)
 app.include_router(password_reset_router)
 app.include_router(users.router)

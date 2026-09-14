@@ -128,6 +128,24 @@ Pruebas: instala `pip install -r requirements-dev.txt` y ejecuta `python -m pyte
 
 Criterios: [almacenamiento de contraseñas de OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) y [recuperación de contraseña de OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html).
 
+### Gestión de tiendas y productos
+
+Con sesión de vendedor, `/inicio` redirige a Mi tienda y la API del catálogo devuelve únicamente sus productos y su tienda. Las URLs públicas de tiendas y fichas ajenas devuelven 404, al igual que sus rutas de gestión. El catálogo de su tienda redirige a su panel de productos. El vendedor conserva acceso a su cuenta y sus propias líneas de pedido, sin acceso al carrito de comprador ni a administración de usuarios.
+
+Vendedores y administradores acceden a `/mi-tienda` al iniciar sesión y desde el enlace junto a Mi cuenta. El vendedor ve una tarjeta con su única tienda y algunos datos; al pulsarla abre sus productos para gestionarlos. Su cabecera contiene Productos y Editar tienda. El administrador ve todas las tiendas. Registrar tienda solo aparece para vendedores sin tienda; el servidor y un índice único en la base de datos impiden asignar dos tiendas al mismo vendedor, también desde administración.
+
+`/gestion/tiendas/nueva` registra una tienda con nombre, descripción, dirección, horario e imagen. Sus categorías se calculan automáticamente como el conjunto de las categorías de todos sus productos, sin duplicados; una tienda sin productos no tiene categorías. Su ubicación se establece pulsando el mapa o introduciendo latitud y longitud. `/gestion/tiendas/{id}/editar` permite editarla; administradores pueden asignar o reasignar el vendedor propietario.
+
+`/gestion/tiendas/{id}/productos` ofrece búsqueda y paginación, un botón Crear producto que abre su formulario y otro Editar stock que habilita la edición de unidades en la tabla. Editar / categoría abre la ficha de edición. El stock se actualiza mediante `PATCH /api/gestion/productos/{id}/stock`, sin cambiar los demás campos. Se mantienen las ocho categorías existentes del catálogo. Crear, reclasificar o eliminar productos actualiza automáticamente las categorías de la tienda. Los precios de oferta deben ser no negativos e inferiores al precio normal. El enlace Ver pedidos y resumen permite consultar el dashboard.
+
+El dashboard muestra el stock disponible, agotado o bajo (hasta cinco unidades) y los pedidos que contienen productos de esa tienda, con estado e importe de sus propias líneas. Los pedidos de otras tiendas y los datos de sus compradores no se muestran. El dashboard no crea pedidos ni procesa pagos.
+
+API de gestión: `/api/gestion/tiendas`, `/api/gestion/tiendas/{id}`, `/api/gestion/tiendas/{id}/productos` y `/api/gestion/productos/{id}`. Las operaciones de escritura requieren sesión de vendedor propietario o administrador y `X-CSRF-Token`. El servidor impide que un vendedor lea o modifique otra tienda aunque cambie los identificadores de la URL.
+
+Las categorías de tienda son un dato derivado de sus productos, sin selección ni almacenamiento independiente. Las coordenadas siguen en `coordenadas_tienda` y los productos conservan los campos de RI02. Eliminar una tienda elimina sus productos y coordenadas; si existen líneas de pedido, se devuelve 409 para conservar el historial. En ese caso los productos pueden marcarse como no disponibles. Las fichas públicas mantienen los precios de oferta, porcentaje de descuento y carrito para compradores e invitados.
+
+Pruebas: `docker compose exec -T web python -m pytest -q`, con SQLite aislada de la base local.
+
 
 ## Pagos con Stripe
 

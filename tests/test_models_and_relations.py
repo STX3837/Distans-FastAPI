@@ -154,36 +154,21 @@ class TestTiendaEntity:
         assert tienda.nombre == "Tienda de María"
         print(f"✓ Tienda creada: {tienda.nombre} (Vendedor: {vendedor.nombre})")
     
-    def test_relacion_usuario_tiendas_uno_a_muchos(self, db_session):
-        """Verifica relación 1:N entre Usuario y Tienda."""
-        # Crear vendedor
-        vendedor = Usuario(
-            nombre="Carlos",
-            apellidos="González",
-            email="carlos@example.com",
-            contrasena_hash="hashed_password",
-            rol=RolUsuario.VENDEDOR
-        )
+    def test_vendedor_solo_puede_tener_una_tienda(self, db_session):
+        from sqlalchemy.exc import IntegrityError
+        vendedor = Usuario(nombre="Carlos", apellidos="Demo", email="carlos@example.com",
+                           contrasena_hash="hashed_password", rol=RolUsuario.VENDEDOR)
         db_session.add(vendedor)
         db_session.flush()
-        
-        # Crear múltiples tiendas para el mismo vendedor
-        tienda1 = Tienda(
-            nombre="Tienda 1",
-            vendedor_id=vendedor.id
-        )
-        tienda2 = Tienda(
-            nombre="Tienda 2",
-            vendedor_id=vendedor.id
-        )
-        db_session.add_all([tienda1, tienda2])
+        primera = Tienda(nombre="Tienda 1", vendedor_id=vendedor.id)
+        db_session.add(primera)
         db_session.commit()
-        
-        # Verificar relación inversa
-        assert len(vendedor.tiendas) == 2
-        assert tienda1 in vendedor.tiendas
-        assert tienda2 in vendedor.tiendas
-        print(f"✓ Relación Usuario→Tiendas (1:N): {len(vendedor.tiendas)} tiendas para {vendedor.nombre}")
+        assert vendedor.tiendas == [primera]
+        db_session.add(Tienda(nombre="Tienda 2", vendedor_id=vendedor.id))
+        with pytest.raises(IntegrityError):
+            db_session.commit()
+        db_session.rollback()
+        assert db_session.query(Tienda).filter_by(vendedor_id=vendedor.id).count() == 1
 
 
 class TestProductoEntity:

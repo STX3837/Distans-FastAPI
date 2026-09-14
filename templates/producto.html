@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}{{ producto.nombre }} - Distans{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/static/catalogo.css">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css?v=list-images-1">{% if es_vendedor or es_admin %}<link rel="stylesheet" href="/static/gestion.css?v=product-grid-1">{% endif %}{% endblock %}
 {% block content %}
-<main class="catalog-page"><a href="/inicio?q=">Volver al catálogo</a> · <a href="/carrito">Ver carrito</a>
+<main class="catalog-page">{% if not es_vendedor and not es_admin %}<a href="/inicio?q=">Volver al catálogo</a> · <a href="/carrito">Ver carrito</a>{% endif %}
 <article class="product-detail">
 <div class="product-image">{% if producto.imagen %}<img src="{{ producto.imagen }}" alt="{{ producto.nombre }}">{% else %}<span aria-hidden="true">🛍</span>{% endif %}</div>
 <div class="product-body"><p class="product-category">{{ producto.categoria }}</p><h1>{{ producto.nombre }}</h1>
@@ -12,10 +12,12 @@
 <p class="availability">{{ 'Disponible' if producto.disponible else 'No disponible' }} · Stock: {{ producto.stock }}</p>
 <h2><a href="/tiendas/{{ producto.tienda.id }}">{{ producto.tienda.nombre }}</a></h2><p>{{ producto.tienda.direccion or producto.tienda.ubicacion or 'Dirección pendiente' }}</p>
 {% if producto.tienda.horario %}<p>Horario: {{ producto.tienda.horario }}</p>{% endif %}
+{% if not es_vendedor and not es_admin %}
 <label for="cantidadProducto">Cantidad</label><input id="cantidadProducto" data-add-quantity type="number" min="1" max="{{ producto.stock }}" value="1" {% if not producto.disponible %}disabled{% endif %}>
 <button type="button" class="add-cart" data-add-cart="{{ producto.id }}" {% if not producto.disponible or not puede_comprar %}disabled{% endif %}>Añadir al carrito</button>
 {% if not puede_comprar %}<p>El carrito está disponible para compradores e invitados.</p>{% endif %}
 <p data-cart-feedback role="status" aria-live="polite"></p>
+{% endif %}
 </div></article></main>
 {% endblock %}
 {% block scripts %}<script src="/static/carrito.js"></script>{% endblock %}
