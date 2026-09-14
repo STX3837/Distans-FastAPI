@@ -5,3 +5,4 @@
 .store-actions{position:relative;z-index:1;display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}.admin-card{max-width:none;}.admin-card .field{max-width:760px;}.order-line{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:12px 0;}.order-line>label:first-child{flex:1;min-width:180px;}.order-line input{max-width:100px;}
 .product-bottom-actions{justify-content:flex-end;}.product-bottom-actions .add-cart{margin:0;}
 .product-bottom-actions [hidden]{display:none;}
+.management-product-link{display:flex;align-items:center;gap:12px;}.management-product-image{width:64px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0;}

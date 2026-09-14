@@ -1,8 +1,10 @@
 """Gestión de tiendas y productos para vendedores y administradores."""
 from datetime import datetime
+from pathlib import Path
+from uuid import uuid4
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.orm import Session, joinedload
@@ -14,6 +16,30 @@ from app.routers.users import _obtener_usuario_actual
 from app.routers.catalogo import pagina_publica, producto_publico
 
 router = APIRouter(tags=["gestión comercial"])
+IMAGE_DIRECTORY = Path("static/uploads")
+
+
+@router.post("/api/gestion/imagenes", status_code=201)
+async def subir_imagen(request: Request, archivo: UploadFile = File(...), db: Session = Depends(get_db)):
+    gestor(request, db)
+    _validar_csrf(request)
+    contenido = await archivo.read(5 * 1024 * 1024 + 1)
+    await archivo.close()
+    if len(contenido) > 5 * 1024 * 1024:
+        raise HTTPException(413, "La imagen no puede superar 5 MB")
+    extension = None
+    if contenido.startswith(b"\x89PNG\r\n\x1a\n"):
+        extension = "png"
+    elif contenido.startswith(b"\xff\xd8\xff"):
+        extension = "jpg"
+    elif contenido.startswith(b"RIFF") and contenido[8:12] == b"WEBP":
+        extension = "webp"
+    if extension is None:
+        raise HTTPException(422, "Selecciona una imagen JPG, PNG o WebP")
+    IMAGE_DIRECTORY.mkdir(parents=True, exist_ok=True)
+    nombre = f"{uuid4().hex}.{extension}"
+    (IMAGE_DIRECTORY / nombre).write_bytes(contenido)
+    return {"imagen": f"/static/uploads/{nombre}"}
 
 
 def gestor(request, db):

@@ -8,6 +8,33 @@
         return result;
     }
     function fail(error) {if (status) status.textContent = error.message; else alert(error.message);}
+    async function imageFor(form) {
+        const file = form.querySelector('[data-image-file]').files[0];
+        if (!file) return form.elements.imagen.value;
+        if (file.size > 5 * 1024 * 1024) throw new Error('La imagen no puede superar 5 MB');
+        const body = new FormData(); body.append('archivo', file);
+        const token = document.cookie.split('; ').find(value => value.startsWith('csrf_token='));
+        const response = await fetch('/api/gestion/imagenes', {method: 'POST', body,
+            headers: {'X-CSRF-Token': token ? decodeURIComponent(token.slice(11)) : ''}});
+        const result = await response.json();
+        if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : 'No se pudo subir la imagen');
+        form.elements.imagen.value = result.imagen;
+        form.querySelector('[data-image-file]').value = '';
+        return result.imagen;
+    }
+    document.querySelectorAll('[data-image-file]').forEach(input => {
+        const preview = input.form.querySelector('[data-image-preview]');
+        let objectUrl;
+        function clearPreview() {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            objectUrl = null; preview.hidden = true; preview.removeAttribute('src');
+        }
+        input.addEventListener('change', () => {
+            clearPreview(); const file = input.files[0];
+            if (file) {objectUrl = URL.createObjectURL(file); preview.src = objectUrl; preview.hidden = false;}
+        });
+        input.form.addEventListener('reset', clearPreview);
+    });
     const storeForm = document.getElementById('storeForm');
     if (storeForm) {
         storeForm.addEventListener('submit', async event => {
@@ -15,6 +42,7 @@
             const button = storeForm.querySelector('[type=submit]'); button.disabled = true;
             try {
                 const form = new FormData(storeForm), data = Object.fromEntries(form);
+                data.imagen = await imageFor(storeForm);
                 data.latitud = Number(data.latitud); data.longitud = Number(data.longitud);
                 if (data.vendedor_id) data.vendedor_id = Number(data.vendedor_id);
                 const id = storeForm.dataset.storeId;
@@ -80,6 +108,7 @@
         });
         document.querySelectorAll('[data-edit-product]').forEach(button => button.addEventListener('click', () => {
             const product = JSON.parse(button.dataset.editProduct);
+            productForm.reset();
             for (const field of productForm.elements) {
                 if (!field.name || !(field.name in product)) continue;
                 if (field.type === 'checkbox') field.checked = product[field.name]; else field.value = product[field.name] ?? '';
@@ -91,6 +120,7 @@
             event.preventDefault(); const button = productForm.querySelector('[type=submit]'); button.disabled = true;
             try {
                 const data = Object.fromEntries(new FormData(productForm)), id = data.id; delete data.id;
+                data.imagen = await imageFor(productForm);
                 data.precio = Number(data.precio); data.precio_oferta = data.precio_oferta === '' ? null : Number(data.precio_oferta);
                 data.stock = Number(data.stock); data.disponible = productForm.elements.disponible.checked; data.destacado = productForm.elements.destacado.checked;
                 await mutate(id ? '/api/gestion/productos/' + id : '/api/gestion/tiendas/' + productForm.dataset.storeId + '/productos', id ? 'PUT' : 'POST', data);

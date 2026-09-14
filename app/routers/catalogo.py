@@ -136,6 +136,7 @@ def buscar(db, q, categoria, destacados, pagina, geo=(None, None, 0), tienda_id=
     tiendas = filtrar_radio(tiendas_query, db, geo, Tienda.id).options(joinedload(Tienda.coordenadas)).order_by(Tienda.nombre).all()
     return {"productos": [producto_publico(p) for p in productos], "tiendas": [
         {"id": t.id, "nombre": t.nombre, "direccion": t.direccion, "ubicacion": t.ubicacion,
+         "imagen": t.imagen if t.imagen and (t.imagen.startswith(("https://", "http://")) or (t.imagen.startswith("/") and not t.imagen.startswith("//"))) else None,
          "latitud": t.coordenadas.latitud if t.coordenadas else None,
          "longitud": t.coordenadas.longitud if t.coordenadas else None} for t in tiendas], "total": total,
             "pagina": pagina, "paginas": ceil(total / PAGE_SIZE), "por_pagina": PAGE_SIZE}

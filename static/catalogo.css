@@ -72,3 +72,4 @@ body:has(.market-header) #productsMap{height:calc(100dvh - 190px);}
 @media(max-width:1050px){.market-top{grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:6px 12px;}.market-location-controls{grid-column:1/-1;grid-row:2;}.market-account{grid-column:2;grid-row:1;}.market-location-controls .location-button,.market-location-controls .radius-control{order:0;}}
 @media(max-width:700px){.market-header .search-form>div{flex:0 1 calc((100% - 12px)/2);}.market-header .search-form{max-width:560px;}.market-location-controls{gap:12px;}.search-form>div{flex:0 1 100%;}.market-location-controls .location-button,.market-location-controls .radius-control select{width:144px;}}
 .catalog-page a.add-cart{color:white;text-decoration:none;}
+.store-list-image{display:block;width:100%;height:180px;object-fit:cover;border-radius:8px;margin-bottom:16px;}

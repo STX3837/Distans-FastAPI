@@ -63,6 +63,27 @@ def test_save_multiple_stocks_atomically(client, admin_data, db_session):
     assert client.patch(url, json=changes, headers=headers).status_code == 403
 
 
+def test_image_upload_permissions_size_and_generated_path(client, admin_data, monkeypatch, tmp_path):
+    from app.routers import gestion
+    import base64
+    monkeypatch.setattr(gestion, 'IMAGE_DIRECTORY', tmp_path)
+    admin, seller, buyer, shop, product, h = admin_data
+    png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7WQAAAAASUVORK5CYII=')
+    files = {'archivo': ('../../photo.png', png, 'image/png')}
+    assert client.post('/api/gestion/imagenes', files=files).status_code == 403
+    response = client.post('/api/gestion/imagenes', files=files, headers=h)
+    assert response.status_code == 201
+    name = response.json()['imagen'].split('/')[-1]
+    assert response.json()['imagen'].startswith('/static/uploads/')
+    assert (tmp_path / name).read_bytes() == png
+    assert client.post('/api/gestion/imagenes', files={'archivo': ('image.png', b'<svg/>', 'image/png')}, headers=h).status_code == 422
+    assert client.post('/api/gestion/imagenes', files={'archivo': ('large.png', b'x' * (5 * 1024 * 1024 + 1), 'image/png')}, headers=h).status_code == 413
+    headers = login(client, seller)
+    assert client.post('/api/gestion/imagenes', files=files, headers=headers).status_code == 201
+    headers = login(client, buyer)
+    assert client.post('/api/gestion/imagenes', files=files, headers=headers).status_code == 403
+
+
 def existing_order(db, buyer, product):
     order = Pedido(codigo_pedido='ADMIN-001', usuario_id=buyer.id, metodo_pago=MetodoPago.EFECTIVO,
                    direccion_envio='Carmona', direccion_facturacion='Carmona', subtotal=30, impuesto=2, coste_entrega=3, total=35,
