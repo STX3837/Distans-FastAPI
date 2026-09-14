@@ -5,7 +5,17 @@ from urllib.parse import urlparse
 
 from fastapi import HTTPException
 from sqlalchemy import update
-from app.models import EstadoPedido, Pedido, Producto
+from app.models import Carrito, ProductoCarrito, EstadoPedido, Pedido, Producto
+
+
+def vaciar_carrito_pedido(db, pedido):
+    if pedido.carrito_id is None or pedido.carrito_vaciado:
+        return
+    carrito = db.query(Carrito).filter_by(id=pedido.carrito_id).with_for_update().first()
+    if carrito:
+        db.query(ProductoCarrito).filter_by(carrito_id=carrito.id).delete(synchronize_session='fetch')
+        carrito.fecha_actualizacion = datetime.utcnow()
+    pedido.carrito_vaciado = True
 
 
 def configuracion():
@@ -71,6 +81,7 @@ def aplicar_sesion(db, pedido, session):
             raise ValueError('Pago recibido para una reserva cancelada')
         pedido.pago_completado = True
         pedido.estado = EstadoPedido.CONFIRMADO
+        vaciar_carrito_pedido(db, pedido)
     elif session.get('status') == 'expired':
         liberar_reserva(db, pedido)
 
@@ -101,7 +112,11 @@ def abrir_pago(db, pedido):
         raise HTTPException(502, 'No se pudo conectar con Stripe. Reintenta la confirmación del pedido.')
     if pedido.estado == EstadoPedido.CANCELADO:
         raise HTTPException(409, 'La reserva ha caducado. Inicia otra compra.')
-    return session.get('url') if not pedido.pago_completado else None
+    if pedido.pago_completado:
+        return None
+    if not session.get('url'):
+        raise HTTPException(502, 'Stripe no ha proporcionado la pasarela de pago. Reintenta la confirmación.')
+    return session['url']
 
 
 def reconciliar_reservas(db):

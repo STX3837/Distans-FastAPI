@@ -1,18 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Carrito - Distans{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/static/catalogo.css">{% endblock %}
-{% block content %}<main class="catalog-page"><h1>Tu carrito</h1><a href="/inicio?q=">Seguir comprando</a>
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css"><link rel="stylesheet" href="/static/carrito.css?v=2">{% endblock %}
+{% block content %}<main class="catalog-page cart-page"><div class="cart-heading"><div><p class="cart-eyebrow">TUS COMPRAS LOCALES</p><h1>Tu carrito</h1><p>{{ cantidad }} unidades · {{ items|length }} productos</p></div><a href="/inicio?q=&amp;tab=productos">← Seguir comprando</a></div>
 {% if not user_name %}<p>Tu carrito de invitado se conserva durante esta sesión del navegador.</p>{% endif %}
+<div class="cart-layout"><section aria-label="Productos del carrito">
 {% for item in items %}{% set producto = item.producto %}
-<article class="cart-item"><h2><a href="/productos/{{ producto.id }}">{{ producto.nombre }}</a></h2>
+<article class="cart-item">
+<a class="cart-photo" href="/productos/{{ producto.id }}" aria-label="Ver {{ producto.nombre }}"><span aria-hidden="true">🛍</span>{% if producto.imagen|default(none) %}<img src="{{ producto.imagen }}" alt="{{ producto.nombre }}" loading="lazy" onerror="this.hidden=true">{% endif %}</a>
+<div class="cart-product-info"><h2><a href="/productos/{{ producto.id }}">{{ producto.nombre }}</a></h2>
+{% if producto.tienda is defined %}<p>Tienda: <a href="/tiendas/{{ producto.tienda.id }}">{{ producto.tienda.nombre }}</a></p>{% endif %}
+<p class="cart-meta">{{ producto.categoria|default('') }}{% if producto.marca|default(none) %} · {{ producto.marca }}{% endif %}</p>
 {% include "precio.html" %}
-{% if not item.disponible %}<p class="availability">No disponible en la cantidad seleccionada. Reduce la cantidad o elimina el producto.</p>{% endif %}
+{% if item.disponible %}<p class="cart-available">● Disponible</p>{% else %}<p class="availability">No disponible en la cantidad seleccionada. Reduce la cantidad o elimina el producto.</p>{% endif %}
+<div class="cart-controls">
 <label for="cantidad-{{ producto.id }}">Cantidad</label><input id="cantidad-{{ producto.id }}" data-cart-quantity="{{ producto.id }}" type="number" min="1" max="999" value="{{ item.cantidad }}">
 <button class="add-cart" data-update-cart="{{ producto.id }}" type="button">Actualizar</button>
 <button class="map-link" data-remove-cart="{{ producto.id }}" type="button">Eliminar</button>
-<p>Subtotal: {{ '%.2f'|format(item.subtotal) }} €</p></article>
-{% else %}<p class="empty-catalog">Tu carrito está vacío.</p>{% endfor %}
-<p class="product-price">Total: {{ '%.2f'|format(total) }} €</p><p data-cart-feedback role="status" aria-live="polite"></p>
-{% if items %}<button class="add-cart" type="button" data-buy-cart>Comprar productos del carrito</button>{% endif %}
+</div></div><p class="cart-subtotal"><span>Subtotal</span><strong>{{ '%.2f'|format(item.subtotal) }} €</strong></p></article>
+{% else %}<div class="cart-empty"><span aria-hidden="true">🛍</span><h2>Tu carrito está vacío</h2><p>Descubre productos de las tiendas cercanas y añade tus favoritos.</p><a class="add-cart" href="/inicio?tab=productos">Explorar el catálogo</a></div>{% endfor %}
+</section>
+{% if items %}<aside class="cart-summary" aria-labelledby="resumenCarrito"><h2 id="resumenCarrito">Resumen del carrito</h2><p>Todo lo que has elegido, en un solo lugar.</p><dl><div><dt>Productos</dt><dd>{{ items|length }}</dd></div><div><dt>Unidades</dt><dd>{{ cantidad }}</dd></div><div class="cart-total"><dt>Total</dt><dd>{{ '%.2f'|format(total) }} €</dd></div></dl><button class="add-cart" type="button" data-buy-cart>Continuar con la compra →</button><p class="cart-summary-note">Revisa las cantidades antes de continuar. Los datos de pago y entrega se completan en el siguiente paso.</p></aside>{% endif %}
+</div><p data-cart-feedback role="status" aria-live="polite"></p>
 </main>{% endblock %}
-{% block scripts %}<script src="/static/carrito.js"></script>{% endblock %}
+{% block scripts %}<script src="/static/carrito.js?v=cesta-1"></script>{% endblock %}

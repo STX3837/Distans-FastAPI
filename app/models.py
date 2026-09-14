@@ -196,12 +196,12 @@ class Carrito(Base):
     id = Column(Integer, primary_key=True, index=True)
     
     # Usuario propietario del carrito
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, unique=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True, unique=True)
     
     # Metadatos
     fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
     fecha_actualizacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    sesion = Column(String, nullable=True)
+    sesion = Column(String, nullable=True, unique=True)
     
     # Relaciones
     usuario = relationship("Usuario", back_populates="carrito")
@@ -257,6 +257,8 @@ class Pedido(Base):
     email_comprador = Column(String, nullable=False, default="")
     moneda = Column(String(3), default="EUR", nullable=False)
     pago_completado = Column(Boolean, default=False, nullable=False)
+    carrito_id = Column(Integer, ForeignKey("carritos.id", ondelete="SET NULL"), nullable=True)
+    carrito_vaciado = Column(Boolean, default=False, nullable=False)
     stripe_session_id = Column(String, unique=True, nullable=True)
     reserva_expira = Column(DateTime, nullable=True)
     reserva_liberada = Column(Boolean, default=False, nullable=False)

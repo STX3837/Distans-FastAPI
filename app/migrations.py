@@ -13,6 +13,11 @@ def ejecutar(engine, filename):
                 connection.exec_driver_sql(statement)
 
 
+def actualizar_cesta(engine):
+    if engine.dialect.name == 'postgresql':
+        ejecutar(engine, '20260914_cesta.sql')
+
+
 def actualizar_pedidos(engine):
     if engine.dialect.name != 'postgresql':
         return

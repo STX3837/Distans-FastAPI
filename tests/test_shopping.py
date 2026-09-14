@@ -33,7 +33,7 @@ def test_buyer_header_on_shopping_pages_and_excluded_from_account_pages(client, 
     buyer = user_factory(email="headerbuyer@example.com")
     client.post("/api/login", json={"email": buyer.email, "contrasena": "clave12345"})
     assert 'class="market-header"' in client.get(f"/productos/{product.id}").text
-    assert 'class="market-header"' in client.get("/usuarios/cuenta").text
+    assert 'class="persistent-cart"' in client.get("/usuarios/cuenta").text
 
 
 @pytest.mark.parametrize("role", [RolUsuario.VENDEDOR, RolUsuario.ADMIN])
@@ -98,6 +98,30 @@ def test_seller_cannot_add_to_cart(client, product, db_session):
     seller = product.tienda.vendedor
     client.post("/api/login", json={"email": seller.email, "contrasena": "clave12345"})
     assert client.post(f"/api/carrito/productos/{product.id}", json={"cantidad": 1}, headers=headers(client)).status_code == 403
+
+
+def test_guest_cart_is_stored_with_dates_and_multiple_stores(client, product, db_session, user_factory):
+    seller = user_factory(email="second-cart-seller@example.com", rol=RolUsuario.VENDEDOR)
+    shop = Tienda(nombre="Segunda tienda", vendedor_id=seller.id)
+    db_session.add(shop)
+    db_session.flush()
+    other = Producto(nombre="Otro producto", tienda_id=shop.id, precio=8,
+                     categoria=Categoria.HOGAR_BRICOLAJE, stock=10)
+    db_session.add(other)
+    db_session.commit()
+    client.get("/inicio")
+    for item, quantity in ((product, 2), (other, 3)):
+        assert client.post(f"/api/carrito/productos/{item.id}", json={"cantidad": quantity},
+                           headers=headers(client)).status_code == 200
+    cart = db_session.query(Carrito).filter_by(usuario_id=None).one()
+    assert cart.sesion and cart.fecha_creacion and cart.fecha_actualizacion
+    assert {item.producto_id: item.cantidad for item in cart.items} == {product.id: 2, other.id: 3}
+    created, updated = cart.fecha_creacion, cart.fecha_actualizacion
+    assert client.put(f"/api/carrito/productos/{other.id}", json={"cantidad": 1}, headers=headers(client)).status_code == 200
+    db_session.refresh(cart)
+    assert cart.fecha_creacion == created and cart.fecha_actualizacion > updated
+    assert client.get("/api/carrito").json()["total"] == 38
+    assert 'class="persistent-cart"' in client.get("/carrito").text
 
 
 def test_radius_filters_before_pagination_and_returns_all_stores(client, product, db_session, user_factory):

@@ -1,0 +1,4 @@
+.persistent-cart { position: fixed; right: 20px; bottom: 20px; z-index: 1000; display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 28px; background: #1e4fa8; color: white; text-decoration: none; font-weight: 700; box-shadow: 0 3px 12px #0003; }
+.persistent-cart:focus-visible { outline: 3px solid #ffcf33; outline-offset: 3px; }
+.persistent-cart [data-cart-count] { background: white; color: #1e4fa8; border-radius: 20px; padding: 2px 8px; }
+body:has(.persistent-cart) { padding-bottom: 80px; }

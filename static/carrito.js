@@ -49,6 +49,7 @@
                 const data = await response.json();
                 if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Revisa la cantidad seleccionada.');
                 if (!button.dataset.addCart) {window.location.reload(); return;}
+                window.dispatchEvent(new CustomEvent('cart-updated', {detail: data}));
                 feedback.textContent = 'Producto añadido. Tu carrito contiene ' + data.cantidad + ' unidades.';
             } catch (error) {feedback.textContent = error.message || 'No se pudo actualizar el carrito.';}
             finally {button.disabled = false;}
