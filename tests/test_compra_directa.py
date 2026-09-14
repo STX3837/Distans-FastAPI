@@ -6,6 +6,8 @@ import pytest
 from app.models import Categoria, EstadoPedido, Pedido, Producto, RolUsuario, Tienda
 from app.routers import compra
 
+pytestmark = pytest.mark.usefixtures('stripe_gateway')
+
 
 @pytest.fixture
 def product(db_session, user_factory):
@@ -43,14 +45,15 @@ def test_guest_purchase_persisted_before_payment_and_idempotent(client, db_sessi
     payload = start(client, product)
     payload["metodo"] = method
     calls = []
-    def payment(order):
+    def payment(db, order):
         persisted = db_session.query(Pedido).filter_by(id=order.id).one()
         assert persisted.estado == EstadoPedido.PENDIENTE
         assert not persisted.pago_completado
         assert len(persisted.items) == 1
         calls.append(order.id)
-        return True
-    monkeypatch.setattr(compra, "procesar_pago_simulado", payment)
+        return 'https://checkout.stripe.com/c/pay/test'
+    from app import stripe_payments
+    monkeypatch.setattr(stripe_payments, "abrir_pago", payment)
     response = submit(client, payload)
     assert response.status_code == 200
     assert response.json()["total"] == "36.30"
@@ -64,13 +67,13 @@ def test_guest_purchase_persisted_before_payment_and_idempotent(client, db_sessi
     assert order.items[0].total == Decimal("30.00")
     assert order.email_comprador == payload["email"]
     assert json.loads(order.direccion_envio) == payload["envio"]
-    assert order.pago_completado == (method == "inmediato")
-    assert order.estado == EstadoPedido.CONFIRMADO
+    assert not order.pago_completado
+    assert order.estado == (EstadoPedido.PENDIENTE if method == "inmediato" else EstadoPedido.CONFIRMADO)
     assert submit(client, payload).json() == response.json()
     assert db_session.query(Pedido).count() == 1
     db_session.refresh(product)
     assert product.stock == 3
-    assert len(calls) == (1 if method == "inmediato" else 0)
+    assert len(calls) == (2 if method == "inmediato" else 0)
     after = client.get("/api/carrito").json()
     assert after["cantidad"] == before["cantidad"]
     assert after["total"] == before["total"]

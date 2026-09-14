@@ -99,3 +99,34 @@ def user_factory(db_session: Session):
         return user
 
     return _create_user
+
+@pytest.fixture
+def stripe_gateway(monkeypatch):
+    from types import SimpleNamespace
+    import stripe
+    from datetime import datetime, timezone
+    monkeypatch.setenv('STRIPE_SECRET_KEY', 'sk_test_fake')
+    monkeypatch.setenv('STRIPE_WEBHOOK_SECRET', 'whsec_test')
+    monkeypatch.setenv('PUBLIC_BASE_URL', 'http://localhost:8000')
+    sessions = {}
+    creations = []
+    def create(params, options=None):
+        key = options['idempotency_key']
+        if key in sessions:
+            return sessions[key]
+        result = dict(id='cs_test_' + str(len(creations)), url='https://checkout.stripe.com/c/pay/test',
+            status='open', payment_status='unpaid', currency='eur',
+            amount_total=sum(line['price_data']['unit_amount'] * line['quantity'] for line in params['line_items']),
+            metadata=params['metadata'], client_reference_id=params['client_reference_id'], expires_at=params['expires_at'])
+        sessions[key] = result
+        creations.append(params)
+        return result
+    def retrieve(session_id):
+        return next(session for session in sessions.values() if session['id'] == session_id)
+    def expire(session_id):
+        result = retrieve(session_id)
+        result['status'] = 'expired'
+        return result
+    api = SimpleNamespace(create=create, retrieve=retrieve, expire=expire)
+    monkeypatch.setattr(stripe, 'StripeClient', lambda *args, **kwargs: SimpleNamespace(v1=SimpleNamespace(checkout=SimpleNamespace(sessions=api))))
+    return SimpleNamespace(sessions=sessions, creations=creations, api=api)

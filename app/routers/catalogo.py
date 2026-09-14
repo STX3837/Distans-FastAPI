@@ -333,3 +333,5 @@ def guardar_ubicacion(tienda_id: int, datos: CoordenadasRequest, request: Reques
 
 from app.routers.compra import router as compra_router
 router.include_router(compra_router)
+from app.routers.stripe_webhook import router as stripe_router
+router.include_router(stripe_router)
