@@ -31,6 +31,11 @@ def test_admin_navigation_and_account_filters(client, admin_data):
     assert '<dialog id="accountEditor" aria-labelledby="formTitle">' in accounts_page
     assert accounts_page.index('<dialog id="accountEditor"') < accounts_page.index('<form id="adminForm"') < accounts_page.index('</dialog>')
     products_page = client.get(f'/gestion/tiendas/{shop["id"]}/productos').text
+    assert 'product-grid management-product-grid' in products_page
+    assert 'class="product-card"' in products_page
+    assert 'data-add-cart=' not in products_page
+    assert 'data-edit-product=' in products_page
+    assert 'data-stock-product=' in products_page
     assert f'href="/tiendas/{shop["id"]}"' not in products_page
     accounts = client.get('/admin/usuarios/', params={'q': buyer.email, 'rol': 'comprador'}).json()
     assert [u['id'] for u in accounts] == [buyer.id]

@@ -6,3 +6,4 @@
 .product-bottom-actions{justify-content:flex-end;}.product-bottom-actions .add-cart{margin:0;}
 .product-bottom-actions [hidden]{display:none;}
 .management-product-link{display:flex;align-items:center;gap:12px;}.management-product-image{width:64px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0;}
+.management-product-grid .product-card{display:flex;flex-direction:column;}.management-product-grid .product-body{display:flex;flex-direction:column;flex:1;}.management-product-grid .management-actions{margin-top:auto;padding-top:16px;gap:8px;}.management-product-grid .management-actions .add-cart{margin:0;}
