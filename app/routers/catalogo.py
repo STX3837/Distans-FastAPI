@@ -85,11 +85,12 @@ def filtrar_radio(query, db, geo, columna=Producto.tienda_id):
 
 
 def contexto_publico(request, db):
-    contexto = {"user_name": None, "es_admin": False, "es_vendedor": False, "puede_comprar": True}
+    contexto = {"user_name": None, "es_admin": False, "es_vendedor": False, "es_comprador": False, "puede_comprar": True}
     if request.session.get("usuario"):
         try:
             usuario = _obtener_usuario_actual(request, db)
             contexto.update(user_name=usuario.nombre, es_admin=usuario.rol == RolUsuario.ADMIN,
+                            es_comprador=usuario.rol == RolUsuario.COMPRADOR,
                             es_vendedor=usuario.rol == RolUsuario.VENDEDOR,
                             puede_comprar=usuario.rol == RolUsuario.COMPRADOR)
             if usuario.rol == RolUsuario.VENDEDOR:

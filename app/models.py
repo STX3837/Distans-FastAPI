@@ -185,6 +185,20 @@ class Producto(Base):
     pedido_items = relationship("ProductoPedido", back_populates="producto", cascade="all, delete-orphan")
 
 
+class ProductoFavorito(Base):
+    __tablename__ = "productos_favoritos"
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
+    producto_id = Column(Integer, ForeignKey("productos.id", ondelete="CASCADE"), primary_key=True)
+    fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class TiendaFavorita(Base):
+    __tablename__ = "tiendas_favoritas"
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
+    tienda_id = Column(Integer, ForeignKey("tiendas.id", ondelete="CASCADE"), primary_key=True)
+    fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class Carrito(Base):
     """
     Entidad de Carrito

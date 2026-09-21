@@ -6,6 +6,7 @@
 <article class="product-detail">
 <div class="product-image">{% if producto.imagen %}<img src="{{ producto.imagen }}" alt="{{ producto.nombre }}">{% else %}<span aria-hidden="true">🛍</span>{% endif %}</div>
 <div class="product-body"><p class="product-category">{{ producto.categoria }}</p><h1>{{ producto.nombre }}</h1>
+{% if es_comprador %}<button type="button" class="favorite-button" data-favorite-type="productos" data-favorite-id="{{ producto.id }}" aria-pressed="false">♡ Guardar producto</button>{% endif %}
 <p>{{ producto.descripcion or 'Sin descripción adicional.' }}</p>
 {% if producto.marca %}<p>Marca: {{ producto.marca }}</p>{% endif %}
 {% include "precio.html" %}

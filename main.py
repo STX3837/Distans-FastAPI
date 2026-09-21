@@ -3,10 +3,12 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 import os
 import asyncio
+import logging
 from contextlib import suppress
+from sqlalchemy import text
 from app.database import engine
 from app.models import Base, Tienda
-from app.routers import users, auth, catalogo, gestion, admin_pedidos
+from app.routers import users, auth, catalogo, gestion, admin_pedidos, favoritos
 from app.password_reset import router as password_reset_router
 from app.migrations import actualizar_pedidos, actualizar_cesta
 
@@ -38,9 +40,16 @@ if os.path.exists("static"):
 async def startup_event():
     Base.metadata.create_all(bind=engine)
     # create_all no añade índices a tablas existentes.
-    for index in Tienda.__table__.indexes:
-        if index.name == "uq_tiendas_vendedor_id":
-            index.create(bind=engine, checkfirst=True)
+    with engine.connect() as connection:
+        vendedores_duplicados = connection.execute(text(
+            "SELECT vendedor_id FROM tiendas GROUP BY vendedor_id HAVING COUNT(*) > 1 LIMIT 1"
+        )).first()
+    if vendedores_duplicados:
+        logging.warning("No se crea el índice único de tiendas: hay vendedores con varias tiendas existentes")
+    else:
+        for index in Tienda.__table__.indexes:
+            if index.name == "uq_tiendas_vendedor_id":
+                index.create(bind=engine, checkfirst=True)
     actualizar_pedidos(engine)
     actualizar_cesta(engine)
     from app.payment_worker import vigilar_reservas
@@ -55,6 +64,7 @@ async def shutdown_event():
 
 # Registrar routers
 app.include_router(catalogo.router)
+app.include_router(favoritos.router)
 app.include_router(gestion.router)
 app.include_router(admin_pedidos.router)
 app.include_router(auth.router)

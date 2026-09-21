@@ -4,6 +4,7 @@
                         {% include "precio.html" %}
                         <p class="availability">{{ 'Disponible' if producto.disponible else 'No disponible' }}</p>
                         <a class="map-link" href="/productos/{{ producto.id }}">Ver ficha del producto</a>
+                        {% if es_comprador %}<button type="button" class="favorite-button" data-favorite-type="productos" data-favorite-id="{{ producto.id }}" aria-pressed="false">♡ Guardar producto</button>{% endif %}
                         {% if gestion_tarjetas|default(false) %}
                         {% if producto.marca %}<p class="shop-address">Marca: {{ producto.marca }}</p>{% endif %}
                         <p class="stock-note">Stock: {{ producto.stock }}</p>

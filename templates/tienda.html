@@ -4,7 +4,7 @@
 {% block content %}
 <main class="catalog-page catalog-content">
 <a href="/inicio?q=">Volver al catálogo general</a>
-<section class="catalog-hero"><h1>{{ tienda.nombre }}</h1>
+<section class="catalog-hero"><h1>{{ tienda.nombre }}</h1>{% if es_comprador %}<button type="button" class="favorite-button" data-favorite-type="tiendas" data-favorite-id="{{ tienda.id }}" aria-pressed="false">♡ Guardar tienda</button>{% endif %}
 <img class="store-cover" src="{{ tienda_imagen or '/static/tienda-predeterminada.svg' }}" alt="{{ tienda.nombre }}" onerror="this.onerror=null;this.src='/static/tienda-predeterminada.svg'">
 {% if tienda_categorias %}<p>Categorías: {{ tienda_categorias|join(' · ') }}</p>{% endif %}
 {% if tienda.descripcion %}<p>{{ tienda.descripcion }}</p>{% endif %}
