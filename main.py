@@ -10,7 +10,7 @@ from app.database import engine
 from app.models import Base, Tienda
 from app.routers import users, auth, catalogo, gestion, admin_pedidos, favoritos
 from app.password_reset import router as password_reset_router
-from app.migrations import actualizar_pedidos, actualizar_cesta
+from app.migrations import actualizar_pedidos, actualizar_cesta, actualizar_filtros
 
 # Crear la aplicación FastAPI
 app = FastAPI(
@@ -52,6 +52,7 @@ async def startup_event():
                 index.create(bind=engine, checkfirst=True)
     actualizar_pedidos(engine)
     actualizar_cesta(engine)
+    actualizar_filtros(engine)
     from app.payment_worker import vigilar_reservas
     app.state.payment_worker = asyncio.create_task(vigilar_reservas())
 

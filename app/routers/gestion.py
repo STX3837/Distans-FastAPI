@@ -91,6 +91,7 @@ class ProductoDatos(BaseModel):
     descripcion: str = Field(default="", max_length=5000)
     precio: float = Field(gt=0, allow_inf_nan=False)
     precio_oferta: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    modalidad_compra: str = Field(default="presencial", pattern="^(online|presencial)$")
     marca: str = Field(default="", max_length=160)
     categoria: Categoria
     imagen: str = Field(default="", max_length=1000)
@@ -111,7 +112,7 @@ class ProductoDatos(BaseModel):
 def datos_tienda(tienda):
     coords = tienda.coordenadas
     categorias = {categoria.value for categoria in tienda.categorias}
-    return {**{k: getattr(tienda, k) for k in ("id", "nombre", "descripcion", "direccion", "ubicacion", "horario", "imagen", "vendedor_id")},
+    return {**{k: getattr(tienda, k) for k in ("id", "nombre", "descripcion", "direccion", "ubicacion", "horario", "imagen", "vendedor_id", "valoracion_media")},
             "categorias": sorted(categorias), "latitud": coords.latitud if coords else None,
             "longitud": coords.longitud if coords else None,
             "fecha_creacion": tienda.fecha_creacion, "fecha_actualizacion": tienda.fecha_actualizacion}
