@@ -1,17 +1,18 @@
 """Inicio con productos y búsqueda geográfica: RF11 y RF05."""
 from math import ceil, radians, sin, cos, asin, sqrt, isfinite
+from typing import Literal
 import secrets
 from datetime import datetime
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import or_, case, func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models import Carrito, ProductoCarrito, Categoria, CoordenadasTienda, Producto, RolUsuario, Tienda, Usuario, ValoracionProducto, ValoracionTienda
+from app.models import Carrito, ProductoCarrito, Categoria, CoordenadasTienda, Producto, RolUsuario, Tienda, Usuario, ValoracionProducto, ValoracionTienda, ComentarioProducto, ComentarioTienda
 from app.routers.auth import templates, _validar_csrf
 from app.routers.users import _obtener_usuario_actual
 
@@ -310,6 +311,9 @@ def catalogo_tienda(request: Request, tienda_id: int, q: str = Query("", max_len
         **datos, "tienda": tienda, "q": q, "categorias": list(Categoria),
         "categoria_seleccionada": categoria.value if categoria else "", "destacados": destacados,
         "valoracion_usuario": puntuacion_usuario(request, db, ValoracionTienda, tienda.id),
+        "comentarios": comentarios_publicos(db, ComentarioTienda, "tienda_id", tienda.id),
+        "comentario_usuario": comentario_usuario(request, db, ComentarioTienda, "tienda_id", tienda.id),
+        "tipo_comentario": "tiendas", "id_comentario": tienda.id,
         "anterior": pagina_url(pagina - 1) if pagina > 1 else None,
         "siguiente": pagina_url(pagina + 1) if pagina < datos["paginas"] else None,
     })
@@ -335,7 +339,10 @@ def ficha(request: Request, producto_id: int, db: Session = Depends(get_db)):
     limitar_tienda_vendedor(request, db, registro.tienda_id)
     producto = producto_publico(registro)
     return pagina_publica(request, db, "producto.html", {"producto": producto, "tienda_activa": producto["tienda"]["id"],
-                                                   "valoracion_usuario": puntuacion_usuario(request, db, ValoracionProducto, producto_id)})
+                                                   "valoracion_usuario": puntuacion_usuario(request, db, ValoracionProducto, producto_id),
+                                                   "comentarios": comentarios_publicos(db, ComentarioProducto, "producto_id", producto_id),
+                                                   "comentario_usuario": comentario_usuario(request, db, ComentarioProducto, "producto_id", producto_id),
+                                                   "tipo_comentario": "productos", "id_comentario": producto_id})
 
 
 def puntuacion_usuario(request, db, modelo, entidad_id):
@@ -387,6 +394,110 @@ def valorar_producto(producto_id: int, datos: Puntuacion, request: Request, db: 
 @router.put("/api/valoraciones/tiendas/{tienda_id}")
 def valorar_tienda(tienda_id: int, datos: Puntuacion, request: Request, db: Session = Depends(get_db)):
     return valorar(request, db, ValoracionTienda, Tienda, "tienda_id", tienda_id, datos.puntuacion)
+
+
+def comentarios_publicos(db, modelo, clave, entidad_id):
+    registros = db.query(modelo).join(Usuario, modelo.usuario_id == Usuario.id).filter(
+        getattr(modelo, clave) == entidad_id, Usuario.activo.is_(True)
+    ).order_by(modelo.fecha_actualizacion.desc(), modelo.usuario_id.desc()).all()
+    return [{"usuario_id": c.usuario_id, "autor": c.autor.nombre, "texto": c.texto,
+             "fecha_actualizacion": c.fecha_actualizacion} for c in registros]
+
+
+def comentario_usuario(request, db, modelo, clave, entidad_id):
+    if not request.session.get("usuario"):
+        return None
+    usuario = _obtener_usuario_actual(request, db)
+    if usuario.rol != RolUsuario.COMPRADOR:
+        return None
+    registro = db.query(modelo).filter_by(usuario_id=usuario.id, **{clave: entidad_id}).first()
+    return registro.texto if registro else None
+
+
+class TextoComentario(BaseModel):
+    texto: str = Field(min_length=1, max_length=1000)
+
+    @field_validator("texto")
+    @classmethod
+    def no_vacio(cls, texto):
+        if not texto.strip():
+            raise ValueError("Escribe un comentario")
+        return texto.strip()
+
+
+def cambiar_comentario(request, db, modelo, entidad, clave, entidad_id, texto):
+    usuario = _obtener_usuario_actual(request, db)
+    if usuario.rol != RolUsuario.COMPRADOR:
+        raise HTTPException(403, "Solo los compradores pueden comentar")
+    _validar_csrf(request)
+    db.query(Usuario).filter_by(id=usuario.id).with_for_update().one()
+    registro = db.get(entidad, entidad_id)
+    if registro is None:
+        raise HTTPException(404, "Elemento no encontrado")
+    vendedor = registro.vendedor if entidad is Tienda else registro.tienda.vendedor
+    if not vendedor.activo:
+        raise HTTPException(404, "Elemento no encontrado")
+    comentario = db.query(modelo).filter_by(usuario_id=usuario.id, **{clave: entidad_id}).first()
+    if texto is None:
+        if comentario is not None:
+            db.delete(comentario)
+    elif comentario is None:
+        db.add(modelo(usuario_id=usuario.id, **{clave: entidad_id}, texto=texto))
+    else:
+        comentario.texto = texto
+        comentario.fecha_actualizacion = datetime.utcnow()
+    db.commit()
+    return {"id": entidad_id, "comentario": texto}
+
+
+@router.put("/api/comentarios/productos/{producto_id}")
+def comentar_producto(producto_id: int, datos: TextoComentario, request: Request, db: Session = Depends(get_db)):
+    return cambiar_comentario(request, db, ComentarioProducto, Producto, "producto_id", producto_id, datos.texto)
+
+
+@router.delete("/api/comentarios/productos/{producto_id}")
+def borrar_comentario_producto(producto_id: int, request: Request, db: Session = Depends(get_db)):
+    return cambiar_comentario(request, db, ComentarioProducto, Producto, "producto_id", producto_id, None)
+
+
+@router.put("/api/comentarios/tiendas/{tienda_id}")
+def comentar_tienda(tienda_id: int, datos: TextoComentario, request: Request, db: Session = Depends(get_db)):
+    return cambiar_comentario(request, db, ComentarioTienda, Tienda, "tienda_id", tienda_id, datos.texto)
+
+
+@router.delete("/api/comentarios/tiendas/{tienda_id}")
+def borrar_comentario_tienda(tienda_id: int, request: Request, db: Session = Depends(get_db)):
+    return cambiar_comentario(request, db, ComentarioTienda, Tienda, "tienda_id", tienda_id, None)
+
+
+def moderar_comentario(request, db, tipo, entidad_id, usuario_id, texto):
+    admin = _obtener_usuario_actual(request, db)
+    if admin.rol != RolUsuario.ADMIN:
+        raise HTTPException(403, "Acceso exclusivo para administradores")
+    _validar_csrf(request)
+    modelo, clave = (ComentarioProducto, "producto_id") if tipo == "productos" else (ComentarioTienda, "tienda_id")
+    comentario = db.query(modelo).filter_by(usuario_id=usuario_id, **{clave: entidad_id}).with_for_update().first()
+    if comentario is None:
+        raise HTTPException(404, "Comentario no encontrado")
+    if texto is None:
+        db.delete(comentario)
+    else:
+        comentario.texto = texto
+        comentario.fecha_actualizacion = datetime.utcnow()
+    db.commit()
+    return {"id": entidad_id, "usuario_id": usuario_id, "comentario": texto}
+
+
+@router.put("/api/admin/comentarios/{tipo}/{entidad_id}/{usuario_id}")
+def editar_comentario_admin(tipo: Literal["productos", "tiendas"], entidad_id: int, usuario_id: int,
+                           datos: TextoComentario, request: Request, db: Session = Depends(get_db)):
+    return moderar_comentario(request, db, tipo, entidad_id, usuario_id, datos.texto)
+
+
+@router.delete("/api/admin/comentarios/{tipo}/{entidad_id}/{usuario_id}")
+def borrar_comentario_admin(tipo: Literal["productos", "tiendas"], entidad_id: int, usuario_id: int,
+                           request: Request, db: Session = Depends(get_db)):
+    return moderar_comentario(request, db, tipo, entidad_id, usuario_id, None)
 
 
 def comprador(request, db):

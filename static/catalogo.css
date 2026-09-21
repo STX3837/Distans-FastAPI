@@ -99,5 +99,19 @@ body:has(.market-header) #productsMap{height:calc(100dvh - 190px);}
 .star-rating:hover input:checked ~ label{color:#929f98;}
 .star-rating:hover label:hover,.star-rating:hover label:hover ~ label{color:#d89200;}
 .star-rating input:focus-visible + label{outline:2px solid #246b4d;outline-offset:2px;border-radius:3px;}
+.comments-section{margin:28px 0;padding:24px;background:white;border:1px solid #dde5e1;border-radius:12px;}
+.comments-section h2{margin:0 0 16px;}
+.comment-form label{display:block;font-weight:600;margin-bottom:8px;}
+.comment-form textarea{display:block;width:100%;min-height:100px;padding:10px;border:1px solid #bdd0c6;border-radius:8px;font:inherit;resize:vertical;box-sizing:border-box;}
+.comment-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.comment-form [data-comment-status]{color:#8a2525;}
+.comment-list{list-style:none;padding:0;margin:18px 0 0;}
+.comment-list li{padding:16px 0;border-top:1px solid #dde5e1;}
+.comment-list time{margin-left:10px;color:#667680;font-size:13px;}
+.comment-list p{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0;}
+.admin-comment-form{margin-top:12px;}
+.admin-comment-form label{display:block;font-weight:600;margin-bottom:6px;}
+.admin-comment-form textarea{display:block;width:100%;min-height:80px;padding:10px;border:1px solid #bdd0c6;border-radius:8px;font:inherit;resize:vertical;box-sizing:border-box;}
+.admin-comment-form [data-comment-status]{color:#8a2525;}
 .catalog-page a.add-cart{color:white;text-decoration:none;}
 .store-list-image{display:block;width:100%;height:180px;object-fit:cover;border-radius:8px;margin-bottom:16px;}

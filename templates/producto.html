@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ producto.nombre }} - Distans{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/static/catalogo.css?v=product-stars-1">{% if es_vendedor or es_admin %}<link rel="stylesheet" href="/static/gestion.css?v=product-grid-1">{% endif %}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css?v=moderate-comments-1">{% if es_vendedor or es_admin %}<link rel="stylesheet" href="/static/gestion.css?v=product-grid-1">{% endif %}{% endblock %}
 {% block content %}
 <main class="catalog-page">{% if not es_vendedor and not es_admin %}<a href="/inicio?q=">Volver al catálogo</a> · <a href="/carrito">Ver carrito</a>{% endif %}
 <article class="product-detail">
@@ -21,6 +21,6 @@
 {% if not puede_comprar %}<p>El carrito está disponible para compradores e invitados.</p>{% endif %}
 <p data-cart-feedback role="status" aria-live="polite"></p>
 {% endif %}
-</div></article></main>
+</div></article>{% include "comentarios.html" %}</main>
 {% endblock %}
-{% block scripts %}<script src="/static/carrito.js?v=cesta-1"></script><script src="/static/valoraciones.js?v=1"></script>{% endblock %}
+{% block scripts %}<script src="/static/carrito.js?v=cesta-1"></script><script src="/static/valoraciones.js?v=1"></script><script src="/static/comentarios.js?v=moderate-1"></script>{% endblock %}

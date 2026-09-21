@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ tienda.nombre }} - Distans{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/static/catalogo.css?v=store-stars-1">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css?v=moderate-comments-1">{% endblock %}
 {% block content %}
 <main class="catalog-page catalog-content">
 <a href="/inicio?q=">Volver al catálogo general</a>
@@ -19,9 +19,10 @@
 <button class="search-button" type="submit">Buscar</button>
 <a class="clear-filters" href="/tiendas/{{ tienda.id }}">Quitar filtros</a>
 </form></section>
+{% include "comentarios.html" %}
 <div class="results-heading"><div><h2>Productos de esta tienda</h2><p>{{ total }} productos · Página {{ pagina }}{% if paginas %} de {{ paginas }}{% endif %}</p></div></div>
 <div class="product-grid">{% for producto in productos %}{% include "tarjeta_producto.html" %}{% else %}<div class="empty-catalog"><h3>No hay productos para mostrar</h3><p>Prueba otros filtros o vuelve a consultar todos los productos de esta tienda.</p></div>{% endfor %}</div>
 <nav class="pagination" aria-label="Páginas de productos">{% if anterior %}<a href="{{ anterior }}">Anterior</a>{% endif %}{% if siguiente %}<a href="{{ siguiente }}">Siguiente</a>{% endif %}</nav>
 <p class="cart-feedback" data-cart-feedback role="status" aria-live="polite"></p>
 </main>{% endblock %}
-{% block scripts %}<script src="/static/carrito.js?v=cesta-1"></script><script src="/static/valoraciones.js?v=1"></script>{% endblock %}
+{% block scripts %}<script src="/static/carrito.js?v=cesta-1"></script><script src="/static/valoraciones.js?v=1"></script><script src="/static/comentarios.js?v=moderate-1"></script>{% endblock %}

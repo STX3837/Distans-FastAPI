@@ -218,6 +218,24 @@ class ValoracionTienda(Base):
     fecha_actualizacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
+class ComentarioProducto(Base):
+    __tablename__ = "comentarios_productos"
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
+    producto_id = Column(Integer, ForeignKey("productos.id", ondelete="CASCADE"), primary_key=True)
+    texto = Column(Text, nullable=False)
+    fecha_actualizacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    autor = relationship("Usuario")
+
+
+class ComentarioTienda(Base):
+    __tablename__ = "comentarios_tiendas"
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
+    tienda_id = Column(Integer, ForeignKey("tiendas.id", ondelete="CASCADE"), primary_key=True)
+    texto = Column(Text, nullable=False)
+    fecha_actualizacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    autor = relationship("Usuario")
+
+
 class Carrito(Base):
     """
     Entidad de Carrito

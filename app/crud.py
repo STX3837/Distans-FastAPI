@@ -159,13 +159,15 @@ def eliminar_usuario(db: Session, usuario_id: int) -> bool:
     if not usuario:
         return False
     
-    from app.models import RestablecimientoContrasena, Producto, Tienda, ValoracionProducto, ValoracionTienda
+    from app.models import RestablecimientoContrasena, Producto, Tienda, ValoracionProducto, ValoracionTienda, ComentarioProducto, ComentarioTienda
     if usuario.tiendas:
         raise HTTPException(status_code=409, detail="Reasigna o elimina las tiendas antes de eliminar la cuenta")
     productos_valorados = [row[0] for row in db.query(ValoracionProducto.producto_id).filter_by(usuario_id=usuario_id).all()]
     tiendas_valoradas = [row[0] for row in db.query(ValoracionTienda.tienda_id).filter_by(usuario_id=usuario_id).all()]
     db.query(ValoracionProducto).filter_by(usuario_id=usuario_id).delete()
     db.query(ValoracionTienda).filter_by(usuario_id=usuario_id).delete()
+    db.query(ComentarioProducto).filter_by(usuario_id=usuario_id).delete()
+    db.query(ComentarioTienda).filter_by(usuario_id=usuario_id).delete()
     for producto_id in productos_valorados:
         producto = db.get(Producto, producto_id)
         if producto:
