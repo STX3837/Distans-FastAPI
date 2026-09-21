@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from fastapi import HTTPException
 from app.models import Usuario, RolUsuario
@@ -158,9 +159,25 @@ def eliminar_usuario(db: Session, usuario_id: int) -> bool:
     if not usuario:
         return False
     
-    from app.models import RestablecimientoContrasena
+    from app.models import RestablecimientoContrasena, Producto, Tienda, ValoracionProducto, ValoracionTienda, ComentarioProducto, ComentarioTienda
     if usuario.tiendas:
         raise HTTPException(status_code=409, detail="Reasigna o elimina las tiendas antes de eliminar la cuenta")
+    productos_valorados = [row[0] for row in db.query(ValoracionProducto.producto_id).filter_by(usuario_id=usuario_id).all()]
+    tiendas_valoradas = [row[0] for row in db.query(ValoracionTienda.tienda_id).filter_by(usuario_id=usuario_id).all()]
+    db.query(ValoracionProducto).filter_by(usuario_id=usuario_id).delete()
+    db.query(ValoracionTienda).filter_by(usuario_id=usuario_id).delete()
+    db.query(ComentarioProducto).filter_by(usuario_id=usuario_id).delete()
+    db.query(ComentarioTienda).filter_by(usuario_id=usuario_id).delete()
+    for producto_id in productos_valorados:
+        producto = db.get(Producto, producto_id)
+        if producto:
+            media = db.query(func.avg(ValoracionProducto.puntuacion)).filter_by(producto_id=producto_id).scalar()
+            producto.valoracion_media = float(media) if media is not None else None
+    for tienda_id in tiendas_valoradas:
+        tienda = db.get(Tienda, tienda_id)
+        if tienda:
+            media = db.query(func.avg(ValoracionTienda.puntuacion)).filter_by(tienda_id=tienda_id).scalar()
+            tienda.valoracion_media = float(media) if media is not None else None
     db.query(RestablecimientoContrasena).filter_by(usuario_id=usuario_id).delete()
     db.delete(usuario)
     try:

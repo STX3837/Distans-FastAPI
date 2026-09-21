@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ producto.nombre }} - Distans{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/static/catalogo.css?v=list-images-1">{% if es_vendedor or es_admin %}<link rel="stylesheet" href="/static/gestion.css?v=product-grid-1">{% endif %}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css?v=moderate-comments-1">{% if es_vendedor or es_admin %}<link rel="stylesheet" href="/static/gestion.css?v=product-grid-1">{% endif %}{% endblock %}
 {% block content %}
 <main class="catalog-page">{% if not es_vendedor and not es_admin %}<a href="/inicio?q=">Volver al catálogo</a> · <a href="/carrito">Ver carrito</a>{% endif %}
 <article class="product-detail">
@@ -9,6 +9,8 @@
 {% if es_comprador %}<button type="button" class="favorite-button" data-favorite-type="productos" data-favorite-id="{{ producto.id }}" aria-pressed="false">♡ Guardar producto</button>{% endif %}
 <p>{{ producto.descripcion or 'Sin descripción adicional.' }}</p>
 {% if producto.marca %}<p>Marca: {{ producto.marca }}</p>{% endif %}
+<p class="rating-summary">Valoración media: {% if producto.valoracion_media is not none %}{{ "%.1f"|format(producto.valoracion_media) }} / 5{% else %}Sin valoraciones{% endif %}</p>
+{% if es_comprador %}<form class="rating-form" data-rating-type="productos" data-rating-id="{{ producto.id }}"><fieldset class="star-rating"><legend>Tu valoración</legend>{% for n in range(5, 0, -1) %}<input type="radio" id="productRating{{ n }}" name="puntuacion" value="{{ n }}" {% if valoracion_usuario == n %}checked{% endif %} required><label for="productRating{{ n }}" title="{{ n }} de 5 estrellas"><span class="sr-only">{{ n }} de 5 estrellas</span><span aria-hidden="true">&#9733;</span></label>{% endfor %}</fieldset><button type="submit" class="search-button">{{ 'Actualizar valoración' if valoracion_usuario else 'Valorar producto' }}</button><span role="status" data-rating-status></span></form>{% endif %}
 {% include "precio.html" %}
 <p class="availability">{{ 'Disponible' if producto.disponible else 'No disponible' }} · Stock: {{ producto.stock }}</p>
 <h2><a href="/tiendas/{{ producto.tienda.id }}">{{ producto.tienda.nombre }}</a></h2><p>{{ producto.tienda.direccion or producto.tienda.ubicacion or 'Dirección pendiente' }}</p>
@@ -19,6 +21,6 @@
 {% if not puede_comprar %}<p>El carrito está disponible para compradores e invitados.</p>{% endif %}
 <p data-cart-feedback role="status" aria-live="polite"></p>
 {% endif %}
-</div></article></main>
+</div></article>{% include "comentarios.html" %}</main>
 {% endblock %}
-{% block scripts %}<script src="/static/carrito.js?v=cesta-1"></script>{% endblock %}
+{% block scripts %}<script src="/static/carrito.js?v=cesta-1"></script><script src="/static/valoraciones.js?v=1"></script><script src="/static/comentarios.js?v=moderate-1"></script>{% endblock %}

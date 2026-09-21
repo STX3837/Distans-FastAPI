@@ -74,5 +74,44 @@ body:has(.market-header) #productsMap{height:calc(100dvh - 190px);}
 .market-header .search-form input:not([type=checkbox]),.market-header .search-form select{padding:6px 10px;}
 @media(max-width:1050px){.market-top{grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:6px 12px;}.market-location-controls{grid-column:1/-1;grid-row:2;}.market-account{grid-column:2;grid-row:1;}.market-location-controls .location-button,.market-location-controls .radius-control{order:0;}}
 @media(max-width:700px){.market-header .search-form>div{flex:0 1 calc((100% - 12px)/2);}.market-header .search-form{max-width:560px;}.market-location-controls{gap:12px;}.search-form>div{flex:0 1 100%;}.market-location-controls .location-button,.market-location-controls .radius-control select{width:144px;}}
+@media(min-width:701px){
+  .market-header .search-form{max-width:none;flex-wrap:nowrap;justify-content:flex-start;gap:8px;overflow-x:auto;}
+  .market-header .search-form>div{flex:1 0 105px;min-width:105px;}
+  .market-header .search-form>div:first-child{flex-basis:150px;}
+  .market-header .search-form>div:nth-child(2){flex-basis:155px;}
+  .market-header .search-form>.featured-filter,.market-header .search-form>.search-button,.market-header .search-form>.clear-filters{flex:none;white-space:nowrap;}
+}
+.market-header .search-form>.featured-filter{display:flex;align-items:center;align-self:end;height:36px;margin:0;gap:5px;}
+.market-header .search-form>.featured-filter input{margin:0;}
+.market-header .search-form .rating-filter{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:6px;align-items:center;}
+.market-header .search-form .rating-filter label{grid-column:1/-1;}
+.market-header .search-form .rating-filter input[type=range]{width:100%;height:36px;padding:0;border:0;background:transparent;accent-color:#246b4d;cursor:pointer;}
+.market-header .search-form .rating-filter output{min-width:2.5ch;font-size:13px;font-variant-numeric:tabular-nums;text-align:right;}
+.rating-summary{color:#246b4d;font-weight:600;}
+.rating-form{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:14px 0;}
+.rating-form select{height:40px;padding:0 8px;border:1px solid #bdd0c6;border-radius:8px;background:white;}
+.rating-form [data-rating-status]{color:#8a2525;}
+.star-rating{display:flex;flex-direction:row-reverse;justify-content:flex-end;gap:2px;margin:0;padding:0;border:0;}
+.star-rating legend{font-size:14px;margin-bottom:4px;}
+.star-rating input{position:absolute;width:1px;height:1px;opacity:0;}
+.star-rating label{color:#929f98;font-size:32px;line-height:1;cursor:pointer;transition:color .15s;}
+.star-rating input:checked ~ label{color:#d89200;}
+.star-rating:hover input:checked ~ label{color:#929f98;}
+.star-rating:hover label:hover,.star-rating:hover label:hover ~ label{color:#d89200;}
+.star-rating input:focus-visible + label{outline:2px solid #246b4d;outline-offset:2px;border-radius:3px;}
+.comments-section{margin:28px 0;padding:24px;background:white;border:1px solid #dde5e1;border-radius:12px;}
+.comments-section h2{margin:0 0 16px;}
+.comment-form label{display:block;font-weight:600;margin-bottom:8px;}
+.comment-form textarea{display:block;width:100%;min-height:100px;padding:10px;border:1px solid #bdd0c6;border-radius:8px;font:inherit;resize:vertical;box-sizing:border-box;}
+.comment-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.comment-form [data-comment-status]{color:#8a2525;}
+.comment-list{list-style:none;padding:0;margin:18px 0 0;}
+.comment-list li{padding:16px 0;border-top:1px solid #dde5e1;}
+.comment-list time{margin-left:10px;color:#667680;font-size:13px;}
+.comment-list p{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0;}
+.admin-comment-form{margin-top:12px;}
+.admin-comment-form label{display:block;font-weight:600;margin-bottom:6px;}
+.admin-comment-form textarea{display:block;width:100%;min-height:80px;padding:10px;border:1px solid #bdd0c6;border-radius:8px;font:inherit;resize:vertical;box-sizing:border-box;}
+.admin-comment-form [data-comment-status]{color:#8a2525;}
 .catalog-page a.add-cart{color:white;text-decoration:none;}
 .store-list-image{display:block;width:100%;height:180px;object-fit:cover;border-radius:8px;margin-bottom:16px;}

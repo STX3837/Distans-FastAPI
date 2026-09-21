@@ -1,9 +1,17 @@
 (() => {
+    document.querySelectorAll('[data-rating-filter]').forEach(slider => {
+        const output = slider.parentElement.querySelector('output');
+        slider.addEventListener('input', () => {output.value = Number(slider.value).toFixed(1);});
+    });
     const status = document.getElementById('mapStatus');
     let map;
     let activeTab;
     function showTab(name) {
         activeTab = name;
+        const tabField = document.querySelector('[data-current-tab]');
+        if (tabField) tabField.value = name;
+        const clearFilters = document.querySelector('[data-clear-filters]');
+        if (clearFilters) clearFilters.href = '/inicio?q=&tab=' + encodeURIComponent(name);
         const url = new URL(window.location.href);
         url.searchParams.set('tab', name);
         window.history.replaceState(null, '', url);

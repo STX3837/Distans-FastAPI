@@ -49,11 +49,62 @@ def test_filter_category_and_featured(client, catalog):
     assert client.get("/inicio", params={"q": "flores", "categoria": ""}).status_code == 200
 
 
+def test_rf06_rf22_filters_and_validation(client, catalog, db_session, user_factory):
+    _, shop, featured, regular, _ = catalog
+    other_seller = user_factory(email="filters@example.com", rol=RolUsuario.VENDEDOR)
+    other_shop = Tienda(nombre="Tienda secundaria", vendedor_id=other_seller.id, valoracion_media=3.0)
+    shop.valoracion_media = 4.5
+    featured.valoracion_media = 4.2
+    featured.modalidad_compra = "online"
+    regular.valoracion_media = 2.0
+    db_session.add(other_shop)
+    db_session.flush()
+    db_session.add(Producto(nombre="Taza ajena", precio=8, tienda_id=other_shop.id,
+                            categoria=Categoria.HOGAR_BRICOLAJE, valoracion_media=5.0,
+                            modalidad_compra="online"))
+    db_session.commit()
+
+    params = {"tienda_id": shop.id, "categoria": Categoria.HOGAR_BRICOLAJE.value,
+              "precio_min": 0, "precio_max": 0, "valoracion_min": 4,
+              "modalidad": "online"}
+    result = client.get("/api/productos", params=params).json()
+    assert [item["id"] for item in result["productos"]] == [featured.id]
+    assert result["total"] == 1
+    assert client.get("/inicio", params=params).status_code == 200
+    assert client.get("/api/productos", params={"precio_min": 1, "precio_max": 0}).status_code == 422
+    assert client.get("/api/productos", params={"modalidad": "ambas"}).status_code == 422
+    assert client.get("/api/productos", params={"valoracion_min": 0}).json()["total"] == 4
+    empty_form = {"tienda_id": "", "precio_min": "", "precio_max": "", "modalidad": "",
+                  "tienda_valoracion_min": "1.5"}
+    empty_response = client.get("/inicio", params=empty_form)
+    assert empty_response.status_code == 200, empty_response.text
+    assert client.get("/api/productos", params=empty_form).status_code == 200
+    assert client.get("/api/productos", params={"tienda_id": "abc"}).status_code == 422
+    assert client.get("/api/productos", params={"precio_min": "abc"}).status_code == 422
+    html = client.get("/inicio").text
+    assert 'id="filterRating" name="valoracion_min" type="range"' in html
+    assert 'id="filterStoreRating" name="tienda_valoracion_min" type="range"' in html
+
+    shops = client.get("/api/tiendas", params={"categoria": Categoria.HOGAR_BRICOLAJE.value,
+                                              "valoracion_min": 4}).json()
+    assert [item["id"] for item in shops] == [shop.id]
+    assert [item["id"] for item in client.get("/api/productos", params={
+        "categoria": Categoria.HOGAR_BRICOLAJE.value, "tienda_valoracion_min": 4}).json()["tiendas"]] == [shop.id]
+
+
 def test_empty_search_browses_whole_catalog(client, catalog):
     response = client.get("/inicio", params={"q": "", "categoria": ""})
     assert response.status_code == 200
     assert "Ramo de flores" in response.text
     assert "Taza artesanal" in response.text
+
+
+def test_store_tab_is_preserved_by_search_form(client, catalog):
+    response = client.get('/inicio', params={'tab': 'tiendas', 'tienda_valoracion_min': '1.5'})
+    assert response.status_code == 200
+    assert 'data-default-tab="tiendas"' in response.text
+    assert 'name="tab" value="tiendas" data-current-tab' in response.text
+    assert 'href="/inicio?q=&amp;tab=tiendas"' in response.text
 
 
 def test_search_wildcards_are_literal(client, catalog):

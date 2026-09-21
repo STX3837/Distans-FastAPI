@@ -18,6 +18,26 @@ def actualizar_cesta(engine):
         ejecutar(engine, '20260914_cesta.sql')
 
 
+def actualizar_filtros(engine):
+    if engine.dialect.name != 'postgresql':
+        return
+    with engine.begin() as connection:
+        for table, columns in {
+            'tiendas': {'valoracion_media': 'DOUBLE PRECISION'},
+            'productos': {'valoracion_media': 'DOUBLE PRECISION', 'modalidad_compra': "VARCHAR(10) NOT NULL DEFAULT 'presencial'"},
+        }.items():
+            for name, definition in columns.items():
+                connection.exec_driver_sql(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {name} {definition}')
+        connection.exec_driver_sql(
+            'UPDATE productos SET valoracion_media = NULL WHERE NOT EXISTS '
+            '(SELECT 1 FROM valoraciones_productos WHERE valoraciones_productos.producto_id = productos.id)'
+        )
+        connection.exec_driver_sql(
+            'UPDATE tiendas SET valoracion_media = NULL WHERE NOT EXISTS '
+            '(SELECT 1 FROM valoraciones_tiendas WHERE valoraciones_tiendas.tienda_id = tiendas.id)'
+        )
+
+
 def actualizar_pedidos(engine):
     if engine.dialect.name != 'postgresql':
         return

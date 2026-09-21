@@ -1,6 +1,7 @@
                     <article class="product-card" data-product-shop="{{ producto.tienda.id }}" id="producto-{{ producto.id }}">
                         <div class="product-image">{% if producto.imagen %}<img src="{{ producto.imagen }}" alt="{{ producto.nombre }}" loading="lazy" onerror="this.hidden=true">{% else %}<span aria-hidden="true">🛍</span>{% endif %}{% if producto.destacado %}<span class="featured-badge">Destacado</span>{% endif %}</div>
                         <div class="product-body"><p class="product-category">{{ producto.categoria }}</p><h3>{{ producto.nombre }}</h3>{% if producto.descripcion %}<p class="product-description">{{ producto.descripcion }}</p>{% endif %}
+                        <p class="rating-summary">Valoración: {% if producto.valoracion_media is not none %}{{ "%.1f"|format(producto.valoracion_media) }} / 5{% else %}Sin valoraciones{% endif %}</p>
                         {% include "precio.html" %}
                         <p class="availability">{{ 'Disponible' if producto.disponible else 'No disponible' }}</p>
                         <a class="map-link" href="/productos/{{ producto.id }}">Ver ficha del producto</a>

@@ -12,6 +12,7 @@
 <input type="hidden" name="id"><label>Nombre<input name="nombre" required maxlength="160"></label><label>Descripción<textarea name="descripcion" maxlength="5000"></textarea></label>
 <div class="coordinate-fields"><label>Precio normal (€)<input name="precio" type="number" step="0.01" min="0.01" required></label><label>Precio en oferta (€)<input name="precio_oferta" type="number" step="0.01" min="0"><span>Vacío si no hay oferta.</span></label></div>
 <label>Marca<input name="marca" maxlength="160"></label><label>Categoría<select name="categoria" required>{% for categoria in categorias %}<option value="{{ categoria.value }}">{{ categoria.value }}</option>{% endfor %}</select></label>
+<label>Modalidad de compra<select name="modalidad_compra"><option value="presencial">Presencial</option><option value="online">Online</option></select></label>
 <label>Imagen (URL o ruta local)<input name="imagen" maxlength="1000"></label>
 <label>Seleccionar foto del ordenador<input type="file" data-image-file accept="image/jpeg,image/png,image/webp"><span>JPG, PNG o WebP. Máximo 5 MB.</span></label>
 <img data-image-preview hidden alt="Vista previa del producto" style="max-width:100%;max-height:200px">

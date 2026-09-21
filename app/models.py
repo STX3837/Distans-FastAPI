@@ -118,6 +118,7 @@ class Tienda(Base):
     direccion = Column(String, nullable=True)
     horario = Column(String, nullable=True)
     imagen = Column(String, nullable=True)
+    valoracion_media = Column(Float, nullable=True)
     
     # Vendedor que es dueño de la tienda
     vendedor_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
@@ -163,6 +164,8 @@ class Producto(Base):
     descripcion = Column(Text, nullable=True)
     precio = Column(Float, nullable=False)
     precio_oferta = Column(Float, nullable=True)
+    valoracion_media = Column(Float, nullable=True)
+    modalidad_compra = Column(String(10), nullable=False, default="presencial")
     imagen = Column(String, nullable=True)
     disponible = Column(Boolean, default=True, nullable=False)
     destacado = Column(Boolean, default=False, nullable=False)
@@ -197,6 +200,40 @@ class TiendaFavorita(Base):
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
     tienda_id = Column(Integer, ForeignKey("tiendas.id", ondelete="CASCADE"), primary_key=True)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ValoracionProducto(Base):
+    __tablename__ = "valoraciones_productos"
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
+    producto_id = Column(Integer, ForeignKey("productos.id", ondelete="CASCADE"), primary_key=True)
+    puntuacion = Column(Integer, CheckConstraint("puntuacion >= 1 AND puntuacion <= 5"), nullable=False)
+    fecha_actualizacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class ValoracionTienda(Base):
+    __tablename__ = "valoraciones_tiendas"
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
+    tienda_id = Column(Integer, ForeignKey("tiendas.id", ondelete="CASCADE"), primary_key=True)
+    puntuacion = Column(Integer, CheckConstraint("puntuacion >= 1 AND puntuacion <= 5"), nullable=False)
+    fecha_actualizacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class ComentarioProducto(Base):
+    __tablename__ = "comentarios_productos"
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
+    producto_id = Column(Integer, ForeignKey("productos.id", ondelete="CASCADE"), primary_key=True)
+    texto = Column(Text, nullable=False)
+    fecha_actualizacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    autor = relationship("Usuario")
+
+
+class ComentarioTienda(Base):
+    __tablename__ = "comentarios_tiendas"
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
+    tienda_id = Column(Integer, ForeignKey("tiendas.id", ondelete="CASCADE"), primary_key=True)
+    texto = Column(Text, nullable=False)
+    fecha_actualizacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    autor = relationship("Usuario")
 
 
 class Carrito(Base):
