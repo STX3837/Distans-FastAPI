@@ -56,11 +56,13 @@
     {% block content %}{% endblock %}
 
     {% if not es_vendedor and not es_admin %}
+    {% if es_comprador %}<a class="persistent-favorites" href="/favoritos">♥ Favoritos</a>{% endif %}
     <a class="persistent-cart" href="/carrito">Carrito <span data-cart-count aria-live="polite">0</span></a>
     <script src="/static/cesta.js?v=1"></script>
     {% endif %}
 
     <script src="/static/auth.js"></script>
+    {% if es_comprador %}<script src="/static/favoritos.js?v=1"></script>{% endif %}
     {% block scripts %}{% endblock %}
 </body>
 </html>

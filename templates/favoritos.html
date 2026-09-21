@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Mis favoritos - Distans{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css">{% endblock %}
+{% block content %}
+<main class="catalog-page catalog-content favorites-page">
+<h1>Mis favoritos</h1>
+<section aria-labelledby="favoritos-tiendas"><h2 id="favoritos-tiendas">Tiendas</h2>
+<div class="store-grid">{% for tienda in tiendas %}<article class="store-card">
+<img class="store-list-image" src="{{ tienda.imagen or '/static/tienda-predeterminada.svg' }}" alt="{{ tienda.nombre }}" loading="lazy" onerror="this.onerror=null;this.src='/static/tienda-predeterminada.svg'">
+<h3><a href="/tiendas/{{ tienda.id }}">{{ tienda.nombre }}</a></h3>
+<p>{{ tienda.direccion or tienda.ubicacion or 'Dirección pendiente' }}</p>
+<button type="button" class="favorite-button" data-favorite-type="tiendas" data-favorite-id="{{ tienda.id }}" aria-pressed="true">♥ Quitar tienda</button>
+</article>{% else %}<p>Aún no has guardado tiendas.</p>{% endfor %}</div></section>
+<section aria-labelledby="favoritos-productos"><h2 id="favoritos-productos">Productos</h2>
+<div class="product-grid">{% for producto in productos %}{% include "tarjeta_producto.html" %}{% else %}<p>Aún no has guardado productos.</p>{% endfor %}</div></section>
+</main>
+{% endblock %}
+{% block scripts %}<script src="/static/carrito.js?v=cesta-1"></script>{% endblock %}
