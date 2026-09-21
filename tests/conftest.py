@@ -12,7 +12,7 @@ from app import crud
 from app.database import get_db
 from app.models import Base, Usuario, RestablecimientoContrasena
 from app.password_reset import router as password_reset_router
-from app.routers import auth, users, catalogo, gestion, admin_pedidos, favoritos
+from app.routers import auth, users, catalogo, gestion, admin_pedidos, favoritos, pedidos
 from app.schemas import RolUsuario as RolUsuarioSchema
 from app.schemas import UsuarioCreate
 
@@ -49,6 +49,7 @@ def app(db_session: Session) -> FastAPI:
     test_app.include_router(favoritos.router)
     test_app.include_router(gestion.router)
     test_app.include_router(admin_pedidos.router)
+    test_app.include_router(pedidos.router)
     test_app.include_router(auth.router)
     test_app.include_router(password_reset_router)
     test_app.include_router(users.router)

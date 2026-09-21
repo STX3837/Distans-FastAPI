@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models import EstadoPedido, MetodoPago, Pedido, Producto, ProductoPedido, RolUsuario, Usuario
+from app.models import EstadoPedido, EstadoSubpedido, MetodoPago, Pedido, Producto, ProductoPedido, RolUsuario, Usuario
 from app.routers.auth import _validar_csrf
 from app.routers.users import _obtener_admin_actual
 from app.routers.catalogo import pagina_publica
@@ -25,7 +25,7 @@ class LineaDatos(BaseModel):
 class PedidoDatos(BaseModel):
     codigo_pedido: str = Field(min_length=1, max_length=100)
     usuario_id: int = Field(ge=1)
-    estado: EstadoPedido = EstadoPedido.PENDIENTE
+    estado: EstadoPedido = EstadoPedido.PREPARACION
     metodo_pago: MetodoPago = MetodoPago.EFECTIVO
     direccion_envio: str = Field(min_length=1, max_length=500)
     direccion_facturacion: str = Field(min_length=1, max_length=500)
@@ -41,15 +41,33 @@ class PedidoDatos(BaseModel):
         return value.strip()
 
 
+class PedidoContactoDatos(BaseModel):
+    direccion_envio: str = Field(min_length=1, max_length=500)
+    direccion_facturacion: str = Field(min_length=1, max_length=500)
+    telefono: str = Field(default="", max_length=50)
+
+    @field_validator("direccion_envio", "direccion_facturacion")
+    @classmethod
+    def direccion_requerida(cls, value):
+        if not value.strip(): raise ValueError("Campo obligatorio")
+        return value.strip()
+
+
 def serializar(pedido):
     return {**{campo: getattr(pedido, campo) for campo in (
-        "id", "codigo_pedido", "usuario_id", "fecha", "subtotal", "impuesto", "coste_entrega", "total",
-        "direccion_envio", "direccion_facturacion", "telefono", "fecha_creacion", "fecha_actualizacion")},
+        "id", "codigo_pedido", "usuario_id", "fecha", "subtotal", "descuento", "impuesto", "coste_entrega", "total",
+        "direccion_envio", "direccion_facturacion", "telefono", "fecha_creacion", "fecha_actualizacion", "reembolso_pendiente")},
         "estado": pedido.estado.value, "metodo_pago": pedido.metodo_pago.value,
-        "comprador": {"nombre": pedido.usuario.nombre, "email": pedido.usuario.email},
+        "puede_editar_datos": pedido.estado == EstadoPedido.PREPARACION,
+        "puede_editar": bool(pedido.usuario_id and pedido.estado == EstadoPedido.PREPARACION
+            and not pedido.stripe_session_id and not any(linea.cancelado for linea in pedido.items)
+            and all(sub.estado == EstadoSubpedido.PREPARACION for sub in pedido.subpedidos)),
+        "comprador": {"nombre": (pedido.usuario.nombre + " " + pedido.usuario.apellidos) if pedido.usuario else
+                      (pedido.nombre_comprador + " " + pedido.apellidos_comprador).strip(),
+                      "email": pedido.usuario.email if pedido.usuario else pedido.email_comprador},
         "lineas": [{"id": linea.id, "producto_id": linea.producto_id, "nombre": linea.producto.nombre,
                     "tienda_id": linea.producto.tienda_id, "cantidad": linea.cantidad,
-                    "precio_unitario": linea.precio_unitario, "total": linea.total} for linea in pedido.items]}
+                    "precio_unitario": linea.precio_unitario, "total": linea.total, "cancelado": linea.cancelado} for linea in pedido.items]}
 
 
 def obtener(db, pedido_id):
@@ -77,7 +95,8 @@ def listar(request: Request, q: str = Query("", max_length=100), estado: EstadoP
     if q.strip(): query = query.filter(Pedido.codigo_pedido.icontains(q.strip(), autoescape=True))
     if estado: query = query.filter(Pedido.estado == estado)
     total = query.count()
-    pedidos = query.options(joinedload(Pedido.usuario), joinedload(Pedido.items).joinedload(ProductoPedido.producto)).order_by(Pedido.id.desc()).offset((pagina - 1) * 20).limit(20).all()
+    pedidos = query.options(joinedload(Pedido.usuario), joinedload(Pedido.subpedidos),
+        joinedload(Pedido.items).joinedload(ProductoPedido.producto)).order_by(Pedido.id.desc()).offset((pagina - 1) * 20).limit(20).all()
     return {"pedidos": [serializar(p) for p in pedidos], "total": total, "pagina": pagina, "paginas": ceil(total / 20)}
 
 
@@ -87,7 +106,46 @@ def leer(pedido_id: int, request: Request, db: Session = Depends(get_db)):
     return serializar(obtener(db, pedido_id))
 
 
+@router.patch("/{pedido_id}/datos")
+def editar_datos(pedido_id: int, datos: PedidoContactoDatos, request: Request, db: Session = Depends(get_db)):
+    _obtener_admin_actual(request, db)
+    _validar_csrf(request)
+    pedido = db.query(Pedido).filter_by(id=pedido_id).with_for_update().first()
+    if pedido is None:
+        raise HTTPException(404, "Pedido no encontrado")
+    if pedido.estado != EstadoPedido.PREPARACION:
+        raise HTTPException(409, "Los datos de entrega solo pueden editarse antes del envío")
+    pedido.direccion_envio = datos.direccion_envio
+    pedido.direccion_facturacion = datos.direccion_facturacion
+    pedido.telefono = datos.telefono.strip()
+    pedido.fecha_actualizacion = datetime.utcnow()
+    db.commit()
+    return serializar(pedido)
+
+
+@router.post("/{pedido_id}/entregar")
+def entregar(pedido_id: int, request: Request, db: Session = Depends(get_db)):
+    _obtener_admin_actual(request, db)
+    _validar_csrf(request)
+    pedido = db.query(Pedido).filter_by(id=pedido_id).with_for_update().first()
+    if pedido is None:
+        raise HTTPException(404, "Pedido no encontrado")
+    activos = [sub for sub in pedido.subpedidos if sub.estado != EstadoSubpedido.CANCELADO]
+    if pedido.estado != EstadoPedido.ENVIADO or not activos or not all(sub.estado == EstadoSubpedido.RECOGIDO for sub in activos):
+        raise HTTPException(409, "Todos los subpedidos activos deben estar recogidos")
+    pedido.estado = EstadoPedido.ENTREGADO
+    db.commit()
+    return serializar(pedido)
+
+
 def guardar(db, pedido, datos):
+    if (pedido is not None and datos.estado != pedido.estado) or (pedido is None and datos.estado != EstadoPedido.PREPARACION):
+        raise HTTPException(409, "El estado de reparto se cambia desde los subpedidos o la acción de entrega")
+    if pedido is not None and (pedido.stripe_session_id or any(linea.cancelado for linea in pedido.items)):
+        raise HTTPException(409, "Este pedido conserva datos de pago o cancelación y no admite edición de líneas")
+    if pedido is not None and (pedido.estado != EstadoPedido.PREPARACION or any(
+            sub.estado != EstadoSubpedido.PREPARACION for sub in pedido.subpedidos)):
+        raise HTTPException(409, "No se pueden editar líneas de un pedido en reparto")
     comprador = db.get(Usuario, datos.usuario_id)
     if comprador is None or comprador.rol != RolUsuario.COMPRADOR:
         raise HTTPException(422, "El pedido debe pertenecer a un comprador")
@@ -116,7 +174,10 @@ def guardar(db, pedido, datos):
     pedido.subtotal = subtotal
     pedido.total = total
     pedido.fecha_actualizacion = datetime.utcnow()
-    try: db.commit()
+    try:
+        from app.estado_pedidos import sincronizar_subpedidos
+        sincronizar_subpedidos(db, pedido)
+        db.commit()
     except IntegrityError:
         db.rollback()
         raise HTTPException(409, "El código de pedido ya existe o hay datos relacionados incompatibles")

@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from fastapi import HTTPException
 from sqlalchemy import update
-from app.models import Carrito, ProductoCarrito, EstadoPedido, Pedido, Producto
+from app.models import Carrito, ProductoCarrito, EstadoPedido, EstadoSubpedido, Pedido, Producto
 
 
 def vaciar_carrito_pedido(db, pedido):
@@ -60,12 +60,14 @@ def crear_sesion(pedido):
 
 
 def liberar_reserva(db, pedido):
-    if pedido.reserva_liberada or pedido.pago_completado or pedido.estado != EstadoPedido.PENDIENTE:
+    if pedido.reserva_liberada or pedido.pago_completado or pedido.estado != EstadoPedido.PREPARACION:
         return
     for item in sorted(pedido.items, key=lambda item: item.producto_id):
         db.execute(update(Producto).where(Producto.id == item.producto_id).values(stock=Producto.stock + item.cantidad))
     pedido.reserva_liberada = True
     pedido.estado = EstadoPedido.CANCELADO
+    for subpedido in pedido.subpedidos:
+        subpedido.estado = EstadoSubpedido.CANCELADO
 
 
 def aplicar_sesion(db, pedido, session):
@@ -73,14 +75,13 @@ def aplicar_sesion(db, pedido, session):
         raise ValueError('Referencia de pago incorrecta')
     if pedido.stripe_session_id and session['id'] != pedido.stripe_session_id:
         raise ValueError('Sesión de pago incorrecta')
-    if session.get('currency') != 'eur' or session.get('amount_total') != centimos(pedido.total):
+    if session.get('currency') != 'eur' or session.get('amount_total') != centimos(pedido.importe_pago_original or pedido.total):
         raise ValueError('Importe de pago incorrecto')
     pedido.stripe_session_id = session['id']
     if session.get('payment_status') in {'paid', 'no_payment_required'} and session.get('status') == 'complete':
-        if pedido.reserva_liberada or pedido.estado == EstadoPedido.CANCELADO:
+        if pedido.reserva_liberada or (pedido.estado == EstadoPedido.CANCELADO and not pedido.pago_completado):
             raise ValueError('Pago recibido para una reserva cancelada')
         pedido.pago_completado = True
-        pedido.estado = EstadoPedido.CONFIRMADO
         vaciar_carrito_pedido(db, pedido)
     elif session.get('status') == 'expired':
         liberar_reserva(db, pedido)
@@ -123,12 +124,13 @@ def reconciliar_reservas(db):
     """Ejecutar periódicamente; comprueba Stripe antes de devolver stock."""
     import stripe
     now = datetime.utcnow()
-    ids = [row[0] for row in db.query(Pedido.id).filter(Pedido.estado == EstadoPedido.PENDIENTE,
-           Pedido.reserva_expira <= now, Pedido.reserva_liberada.is_(False)).all()]
+    ids = [row[0] for row in db.query(Pedido.id).filter(Pedido.estado == EstadoPedido.PREPARACION,
+           Pedido.pago_completado.is_(False), Pedido.reserva_expira <= now,
+           Pedido.reserva_liberada.is_(False)).all()]
     for pedido_id in ids:
         try:
             pedido = db.query(Pedido).filter_by(id=pedido_id).with_for_update().one()
-            if pedido.estado != EstadoPedido.PENDIENTE:
+            if pedido.estado != EstadoPedido.PREPARACION:
                 db.rollback()
                 continue
             if not pedido.stripe_session_id:

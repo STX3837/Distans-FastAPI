@@ -47,9 +47,11 @@ def test_guest_purchase_persisted_before_payment_and_idempotent(client, db_sessi
     calls = []
     def payment(db, order):
         persisted = db_session.query(Pedido).filter_by(id=order.id).one()
-        assert persisted.estado == EstadoPedido.PENDIENTE
+        assert persisted.estado == EstadoPedido.PREPARACION
         assert not persisted.pago_completado
         assert len(persisted.items) == 1
+        assert len(persisted.subpedidos) == 1
+        assert persisted.items[0].subpedido_id == persisted.subpedidos[0].id
         calls.append(order.id)
         return 'https://checkout.stripe.com/c/pay/test'
     from app import stripe_payments
@@ -68,7 +70,7 @@ def test_guest_purchase_persisted_before_payment_and_idempotent(client, db_sessi
     assert order.email_comprador == payload["email"]
     assert json.loads(order.direccion_envio) == payload["envio"]
     assert not order.pago_completado
-    assert order.estado == (EstadoPedido.PENDIENTE if method == "inmediato" else EstadoPedido.CONFIRMADO)
+    assert order.estado == EstadoPedido.PREPARACION
     assert submit(client, payload).json() == response.json()
     assert db_session.query(Pedido).count() == 1
     db_session.refresh(product)

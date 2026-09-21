@@ -1,5 +1,5 @@
 import pytest
-from app.models import Categoria, RolUsuario, Pedido, ProductoPedido, MetodoPago, Producto
+from app.models import Categoria, RolUsuario, Pedido, ProductoPedido, MetodoPago, Producto, Subpedido
 
 
 def login(client, user):
@@ -45,7 +45,7 @@ def test_admin_navigation_and_account_filters(client, admin_data):
 
 
 def payload(buyer, product, code='ADMIN-001'):
-    return {'codigo_pedido': code, 'usuario_id': buyer.id, 'estado': 'pendiente', 'metodo_pago': 'efectivo',
+    return {'codigo_pedido': code, 'usuario_id': buyer.id, 'estado': 'en preparacion', 'metodo_pago': 'efectivo',
             'direccion_envio': 'Carmona', 'direccion_facturacion': 'Carmona', 'impuesto': 2, 'coste_entrega': 3,
             'lineas': [{'producto_id': product['id'], 'cantidad': 2}]}
 
@@ -92,10 +92,33 @@ def test_image_upload_permissions_size_and_generated_path(client, admin_data, mo
 def existing_order(db, buyer, product):
     order = Pedido(codigo_pedido='ADMIN-001', usuario_id=buyer.id, metodo_pago=MetodoPago.EFECTIVO,
                    direccion_envio='Carmona', direccion_facturacion='Carmona', subtotal=30, impuesto=2, coste_entrega=3, total=35,
-                   items=[ProductoPedido(producto_id=product['id'], cantidad=2, precio_unitario=15, total=30)])
+                   subpedidos=[Subpedido(tienda_id=product['tienda']['id'])])
+    order.items = [ProductoPedido(producto_id=product['id'], cantidad=2, precio_unitario=15, total=30,
+                                  subpedido=order.subpedidos[0])]
     db.add(order)
     db.commit()
     return order.id
+
+
+def test_admin_edits_delivery_details_on_paid_order(client, admin_data, db_session):
+    _admin, _seller, buyer, _shop, product, headers = admin_data
+    order_id = existing_order(db_session, buyer, product)
+    order = db_session.get(Pedido, order_id)
+    order.stripe_session_id = 'cs_test_paid_order'
+    db_session.commit()
+
+    listed = client.get('/admin/pedidos/').json()['pedidos'][0]
+    assert listed['puede_editar'] is False
+    assert listed['puede_editar_datos'] is True
+    response = client.patch(f'/admin/pedidos/{order_id}/datos', json={
+        'direccion_envio': 'Nueva dirección 12',
+        'direccion_facturacion': 'Factura 34',
+        'telefono': '+34600000000',
+    }, headers=headers)
+    assert response.status_code == 200
+    assert response.json()['direccion_envio'] == 'Nueva dirección 12'
+    assert db_session.get(Pedido, order_id).telefono == '+34600000000'
+    assert '<dialog id="pedidoEditor"' in client.get('/admin/pedidos/panel').text
 
 
 def test_admin_order_crud_totals_snapshots_and_cascade(client, admin_data, db_session):
@@ -112,12 +135,12 @@ def test_admin_order_crud_totals_snapshots_and_cascade(client, admin_data, db_se
     assert order['lineas'][0]['precio_unitario'] == 15
     assert db_session.query(Pedido).count() == 1
     url = f'/admin/pedidos/{order["id"]}'
-    edited = client.put(url, json={**data, 'estado': 'confirmado', 'lineas': [{'producto_id': product['id'], 'cantidad': 3, 'precio_unitario': 14}]}, headers=h)
+    edited = client.put(url, json={**data, 'estado': 'en preparacion', 'lineas': [{'producto_id': product['id'], 'cantidad': 3, 'precio_unitario': 14}]}, headers=h)
     assert edited.status_code == 200
-    assert edited.json()['estado'] == 'confirmado' and edited.json()['total'] == 47
+    assert edited.json()['estado'] == 'en preparacion' and edited.json()['total'] == 47
     assert db_session.query(ProductoPedido).count() == 1
     assert client.get(url).json()['lineas'][0]['cantidad'] == 3
-    listing = client.get('/admin/pedidos/', params={'q': 'ADMIN', 'estado': 'confirmado'}).json()
+    listing = client.get('/admin/pedidos/', params={'q': 'ADMIN', 'estado': 'en preparacion'}).json()
     assert listing['total'] == 1
     assert client.get('/admin/pedidos/', params={'estado': 'cancelado'}).json()['total'] == 0
     assert client.delete(url, headers=h).status_code == 204

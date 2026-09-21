@@ -25,12 +25,10 @@ class Categoria(str, Enum):
 
 class EstadoPedido(str, Enum):
     """Estados posibles de un pedido"""
-    PENDIENTE = "pendiente"
-    CONFIRMADO = "confirmado"
+    PREPARACION = "en preparacion"
     ENVIADO = "enviado"
     ENTREGADO = "entregado"
     CANCELADO = "cancelado"
-    DEVUELTO = "devuelto"
 
 
 class MetodoPago(str, Enum):
@@ -330,7 +328,7 @@ class ProductoPedidoResponse(ProductoPedidoBase):
 class PedidoBase(BaseModel):
     """Campos básicos de pedido"""
     codigo_pedido: str
-    estado: EstadoPedido = EstadoPedido.PENDIENTE
+    estado: EstadoPedido = EstadoPedido.PREPARACION
     subtotal: float
     impuesto: float = 0.0
     coste_entrega: float = 0.0

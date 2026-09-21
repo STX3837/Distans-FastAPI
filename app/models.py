@@ -1,5 +1,5 @@
 
-from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean, Float, Numeric, ForeignKey, Text, CheckConstraint, Index
+from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean, Float, Numeric, ForeignKey, Text, CheckConstraint, Index, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 from geoalchemy2 import Geometry
@@ -29,12 +29,17 @@ class Categoria(PyEnum):
 
 class EstadoPedido(PyEnum):
     """Estados posibles de un pedido"""
-    PENDIENTE = "pendiente"
-    CONFIRMADO = "confirmado"
+    PREPARACION = "en preparacion"
     ENVIADO = "enviado"
     ENTREGADO = "entregado"
     CANCELADO = "cancelado"
-    DEVUELTO = "devuelto"
+
+
+class EstadoSubpedido(PyEnum):
+    PREPARACION = "en preparacion"
+    LISTO_PARA_RECOGER = "listo para recoger"
+    RECOGIDO = "recogido"
+    CANCELADO = "cancelado"
 
 
 class MetodoPago(PyEnum):
@@ -261,7 +266,7 @@ class Pedido(Base):
     fecha = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     # Estados del pedido
-    estado = Column(Enum(EstadoPedido), default=EstadoPedido.PENDIENTE, nullable=False)
+    estado = Column(Enum(EstadoPedido), default=EstadoPedido.PREPARACION, nullable=False)
     
     # Detalles financieros
     subtotal = Column(Numeric(12, 2), nullable=False)
@@ -279,6 +284,8 @@ class Pedido(Base):
     impuesto = Column(Numeric(12, 2), default=0, nullable=False)
     coste_entrega = Column(Numeric(12, 2), default=0, nullable=False)
     total = Column(Numeric(12, 2), nullable=False)
+    importe_pago_original = Column(Numeric(12, 2), nullable=True)
+    reembolso_pendiente = Column(Numeric(12, 2), default=0, nullable=False)
     
     # Información de envío y facturación
     metodo_pago = Column(Enum(MetodoPago), nullable=False)
@@ -296,6 +303,21 @@ class Pedido(Base):
     # Relaciones
     usuario = relationship("Usuario", back_populates="pedidos")
     items = relationship("ProductoPedido", back_populates="pedido", cascade="all, delete-orphan")
+    subpedidos = relationship("Subpedido", back_populates="pedido", cascade="all, delete-orphan")
+
+
+class Subpedido(Base):
+    """Productos y progreso de una tienda dentro de un pedido."""
+    __tablename__ = "subpedidos"
+    __table_args__ = (UniqueConstraint("pedido_id", "tienda_id", name="uq_subpedido_pedido_tienda"),)
+
+    id = Column(Integer, primary_key=True)
+    pedido_id = Column(Integer, ForeignKey("pedidos.id", ondelete="CASCADE"), nullable=False, index=True)
+    tienda_id = Column(Integer, ForeignKey("tiendas.id"), nullable=False)
+    estado = Column(Enum(EstadoSubpedido), default=EstadoSubpedido.PREPARACION, nullable=False)
+    fecha_actualizacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    pedido = relationship("Pedido", back_populates="subpedidos")
+    items = relationship("ProductoPedido", back_populates="subpedido")
 
 
 class ProductoPedido(Base):
@@ -318,7 +340,10 @@ class ProductoPedido(Base):
     # Claves foráneas
     pedido_id = Column(Integer, ForeignKey("pedidos.id"), nullable=False)
     producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
+    subpedido_id = Column(Integer, ForeignKey("subpedidos.id"), nullable=False, index=True)
+    cancelado = Column(Boolean, default=False, nullable=False)
     
     # Relaciones
     pedido = relationship("Pedido", back_populates="items")
     producto = relationship("Producto", back_populates="pedido_items")
+    subpedido = relationship("Subpedido", back_populates="items")

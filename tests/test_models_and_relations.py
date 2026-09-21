@@ -13,7 +13,7 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from app.models import (
-    Usuario, Tienda, Producto, Carrito, ProductoCarrito, Pedido, ProductoPedido,
+    Usuario, Tienda, Producto, Carrito, ProductoCarrito, Pedido, ProductoPedido, Subpedido,
     RolUsuario, Categoria, EstadoPedido, MetodoPago, Base
 )
 
@@ -522,7 +522,7 @@ class TestPedidoYProductoPedido:
         pedido = Pedido(
             codigo_pedido="PED-001",
             fecha=datetime.utcnow(),
-            estado=EstadoPedido.PENDIENTE,
+            estado=EstadoPedido.PREPARACION,
             subtotal=100.00,
             impuesto=21.00,
             coste_entrega=10.00,
@@ -538,7 +538,7 @@ class TestPedidoYProductoPedido:
         
         assert pedido.id is not None
         assert pedido.codigo_pedido == "PED-001"
-        assert pedido.estado == EstadoPedido.PENDIENTE
+        assert pedido.estado == EstadoPedido.PREPARACION
         assert pedido.total == 131.00
         print(f"✓ Pedido creado: {pedido.codigo_pedido}")
     
@@ -591,7 +591,7 @@ class TestPedidoYProductoPedido:
         # Crear pedido
         pedido = Pedido(
             codigo_pedido="PED-002",
-            estado=EstadoPedido.CONFIRMADO,
+            estado=EstadoPedido.PREPARACION,
             subtotal=80.00,
             impuesto=16.80,
             coste_entrega=5.00,
@@ -605,19 +605,24 @@ class TestPedidoYProductoPedido:
         db_session.flush()
         
         # Agregar productos al pedido
+        subpedido = Subpedido(pedido_id=pedido.id, tienda_id=tienda.id)
+        db_session.add(subpedido)
+        db_session.flush()
         item1 = ProductoPedido(
             cantidad=1,
             precio_unitario=50.00,
             total=50.00,
             pedido_id=pedido.id,
-            producto_id=producto1.id
+            producto_id=producto1.id,
+            subpedido_id=subpedido.id
         )
         item2 = ProductoPedido(
             cantidad=1,
             precio_unitario=30.00,
             total=30.00,
             pedido_id=pedido.id,
-            producto_id=producto2.id
+            producto_id=producto2.id,
+            subpedido_id=subpedido.id
         )
         db_session.add_all([item1, item2])
         db_session.commit()
@@ -684,12 +689,16 @@ class TestPedidoYProductoPedido:
         db_session.flush()
         
         # Agregar producto al pedido
+        subpedido = Subpedido(pedido_id=pedido.id, tienda_id=tienda.id)
+        db_session.add(subpedido)
+        db_session.flush()
         item = ProductoPedido(
             cantidad=1,
             precio_unitario=100.00,
             total=100.00,
             pedido_id=pedido.id,
-            producto_id=producto.id
+            producto_id=producto.id,
+            subpedido_id=subpedido.id
         )
         db_session.add(item)
         db_session.commit()
@@ -874,7 +883,7 @@ class TestIntegracionCompleta:
         pedido = Pedido(
             codigo_pedido="PED-2026-001",
             fecha=datetime.utcnow(),
-            estado=EstadoPedido.PENDIENTE,
+            estado=EstadoPedido.PREPARACION,
             subtotal=subtotal,
             impuesto=impuesto,
             coste_entrega=coste_entrega,
@@ -895,13 +904,17 @@ class TestIntegracionCompleta:
         
         # 7. Agregar items del carrito al pedido
         print("\n7. Agregando productos al pedido...")
+        subpedido = Subpedido(pedido_id=pedido.id, tienda_id=tienda.id)
+        db_session.add(subpedido)
+        db_session.flush()
         for item_carrito in carrito.items:
             item_pedido = ProductoPedido(
                 cantidad=item_carrito.cantidad,
                 precio_unitario=item_carrito.producto.precio_oferta or item_carrito.producto.precio,
                 total=item_carrito.cantidad * (item_carrito.producto.precio_oferta or item_carrito.producto.precio),
                 pedido_id=pedido.id,
-                producto_id=item_carrito.producto_id
+                producto_id=item_carrito.producto_id,
+                subpedido_id=subpedido.id
             )
             db_session.add(item_pedido)
             print(f"   ✓ {item_carrito.producto.nombre} x{item_carrito.cantidad}")
@@ -920,7 +933,7 @@ class TestIntegracionCompleta:
         
         # 9. Cambiar estado del pedido
         print("\n9. Actualizando estado del pedido...")
-        pedido.estado = EstadoPedido.CONFIRMADO
+        pedido.estado = EstadoPedido.PREPARACION
         db_session.commit()
         print(f"   ✓ Pedido actualizado a: {pedido.estado.value}")
         
