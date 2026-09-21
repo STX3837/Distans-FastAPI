@@ -70,7 +70,7 @@ def test_stripe_pending_until_signed_webhook(client, db_session, product, stripe
     assert response.status_code == 200
     assert response.json()['checkout_url'].startswith('https://checkout.stripe.com/')
     order = db_session.query(Pedido).one()
-    assert order.estado == EstadoPedido.PENDIENTE and not order.pago_completado
+    assert order.estado == EstadoPedido.PREPARACION and not order.pago_completado
     assert order.stripe_session_id
     assert order.reserva_expira > datetime.utcnow()
     assert len(stripe_gateway.creations) == 1
@@ -86,7 +86,7 @@ def test_stripe_pending_until_signed_webhook(client, db_session, product, stripe
     assert event(client, session).status_code == 200
     db_session.refresh(order)
     db_session.refresh(product)
-    assert order.pago_completado and order.estado == EstadoPedido.CONFIRMADO
+    assert order.pago_completado and order.estado == EstadoPedido.PREPARACION
     assert product.stock == 3
     assert 'Pago completado' in client.get('/pago/resultado').text
     params = stripe_gateway.creations[0]
@@ -171,7 +171,7 @@ def test_return_confirms_paid_session_without_webhook(client, db_session, produc
     response = client.get('/pago/resultado')
     assert response.status_code == 200 and 'Pago completado' in response.text
     order = db_session.query(Pedido).one()
-    assert order.pago_completado and order.estado == EstadoPedido.CONFIRMADO
+    assert order.pago_completado and order.estado == EstadoPedido.PREPARACION
     assert client.get('/api/pago/estado').json() == {'completado': True, 'caducado': False}
     db_session.refresh(product)
     assert product.stock == 3

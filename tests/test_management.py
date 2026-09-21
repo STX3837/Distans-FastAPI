@@ -1,5 +1,5 @@
 import pytest
-from app.models import Categoria, MetodoPago, Pedido, ProductoPedido, RolUsuario, Tienda, Producto
+from app.models import Categoria, MetodoPago, Pedido, ProductoPedido, RolUsuario, Tienda, Producto, Subpedido
 
 
 STORE = {"nombre": "Tienda pruebas", "direccion": "Carmona", "latitud": 37.47, "longitud": -5.64}
@@ -154,10 +154,15 @@ def test_dashboard_scopes_order_lines_and_preserves_history(client, db_session, 
     db_session.add(other_product); db_session.flush()
     order = Pedido(codigo_pedido="PEDIDO-TEST", usuario_id=buyer.id, subtotal=65, total=65, metodo_pago=MetodoPago.EFECTIVO, direccion_envio="Carmona", direccion_facturacion="Carmona")
     db_session.add(order); db_session.flush()
-    db_session.add_all([ProductoPedido(pedido_id=order.id, producto_id=product["id"], cantidad=1, precio_unitario=15, total=15), ProductoPedido(pedido_id=order.id, producto_id=other_product.id, cantidad=1, precio_unitario=50, total=50)])
+    sub1 = Subpedido(pedido_id=order.id, tienda_id=store["id"])
+    sub2 = Subpedido(pedido_id=order.id, tienda_id=other_store.id)
+    db_session.add_all([sub1, sub2]); db_session.flush()
+    db_session.add_all([ProductoPedido(pedido_id=order.id, subpedido_id=sub1.id, producto_id=product["id"], cantidad=1, precio_unitario=15, total=15), ProductoPedido(pedido_id=order.id, subpedido_id=sub2.id, producto_id=other_product.id, cantidad=1, precio_unitario=50, total=50)])
     db_session.commit()
     page = client.get(f'/gestion/tiendas/{store["id"]}')
     assert "PEDIDO-TEST" in page.text and "15.00 €" in page.text
+    assert "PEDIDO-TEST" in client.get(f'/gestion/tiendas/{store["id"]}/pedidos',
+                                       params={'comprador': f'{buyer.nombre} {buyer.apellidos}'}).text
     assert "Linea ajena" not in page.text
     assert client.delete(f'/api/gestion/productos/{product["id"]}', headers=h).status_code == 409
     assert client.delete(f'/api/gestion/tiendas/{store["id"]}', headers=h).status_code == 409

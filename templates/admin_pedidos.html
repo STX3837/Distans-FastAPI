@@ -1,18 +1,31 @@
 {% extends "gestion_base.html" %}
 {% block title %}Pedidos - Administración Distans{% endblock %}
-{% block content %}<main class="catalog-page catalog-content"><div class="results-heading"><h1>Pedidos</h1></div><a href="/admin/tiendas">Volver a Tiendas</a>
-<p id="pedidosMensaje" role="status" aria-live="polite"></p>
-<form class="search-form" id="buscarPedidos"><div><label for="qPedido">Código de pedido</label><input id="qPedido" maxlength="100"></div><div><label for="estadoFiltro">Estado</label><select id="estadoFiltro"><option value="">Todos</option>{% for estado in estados_pedido %}<option value="{{ estado.value }}">{{ estado.value }}</option>{% endfor %}</select></div><button class="search-button">Buscar</button><button type="button" class="clear-filters" id="limpiarPedidos">Quitar filtros</button></form>
-<div class="table-scroll"><table><thead><tr><th>Código</th><th>Comprador</th><th>Fecha</th><th>Estado</th><th>Total</th><th>Acciones</th></tr></thead><tbody id="pedidosTabla"></tbody></table></div><nav class="pagination"><button id="pedidosAnterior" type="button">Anterior</button><span id="pedidosPagina"></span><button id="pedidosSiguiente" type="button">Siguiente</button></nav>
-<section id="pedidoEditor" hidden><h2 id="pedidoTitulo">Editar pedido</h2><p>Los importes se calculan a partir de sus líneas; el stock se gestiona por separado y no se procesa ningún cobro.</p>
-<form class="management-form" id="pedidoForm"><input name="id" type="hidden">
-<label>Código<input name="codigo_pedido" maxlength="100" required></label>
-<label>Comprador<select name="usuario_id" required><option value="">Selecciona comprador</option>{% for comprador in compradores %}<option value="{{ comprador.id }}">{{ comprador.nombre }} {{ comprador.apellidos }} · {{ comprador.email }}</option>{% endfor %}</select></label>
-<label>Estado<select name="estado">{% for estado in estados_pedido %}<option value="{{ estado.value }}">{{ estado.value }}</option>{% endfor %}</select></label>
-<label>Método de pago<select name="metodo_pago">{% for metodo in metodos_pago %}<option value="{{ metodo.value }}">{{ metodo.value }}</option>{% endfor %}</select></label>
-{% for campo, etiqueta in [('direccion_envio','Dirección de envío'),('direccion_facturacion','Dirección de facturación'),('telefono','Teléfono')] %}<label>{{ etiqueta }}<input name="{{ campo }}" maxlength="{{ 50 if campo == 'telefono' else 500 }}" {% if campo != 'telefono' %}required{% endif %}></label>{% endfor %}
-<div class="coordinate-fields"><label>Impuestos (€)<input name="impuesto" type="number" min="0" step="0.01" value="0" required></label><label>Coste de entrega (€)<input name="coste_entrega" type="number" min="0" step="0.01" value="0" required></label></div>
-<h3>Productos del pedido</h3><div id="pedidoLineas"></div><button class="clear-filters" id="agregarLinea" type="button">Añadir producto</button><button class="add-cart" type="submit">Guardar pedido</button><button class="clear-filters" id="cancelarPedido" type="button">Cancelar edición</button></form></section>
+{% block styles %}{{ super() }}<link rel="stylesheet" href="/static/admin_pedidos.css?v=3">{% endblock %}
+{% block content %}
+<main class="catalog-page catalog-content admin-orders-page">
+  <div class="results-heading"><div><span class="order-overline">Administración</span><h1>Pedidos</h1><p>Consulta los detalles y gestiona las compras realizadas.</p></div><a class="clear-filters" href="/admin/tiendas">Volver a tiendas</a></div>
+  <p id="pedidosMensaje" role="status" aria-live="polite"></p>
+  <form class="search-form" id="buscarPedidos"><div><label for="qPedido">Código de pedido</label><input id="qPedido" maxlength="100"></div><div><label for="estadoFiltro">Estado</label><select id="estadoFiltro"><option value="">Todos</option>{% for estado in estados_pedido %}<option value="{{ estado.value }}">{{ estado.value|capitalize }}</option>{% endfor %}</select></div><button class="search-button">Buscar</button><button type="button" class="clear-filters" id="limpiarPedidos">Quitar filtros</button></form>
+  <div class="table-scroll"><table><thead><tr><th>Código</th><th>Comprador</th><th>Fecha</th><th>Estado</th><th>Total</th><th>Acciones</th></tr></thead><tbody id="pedidosTabla"></tbody></table></div>
+  <nav class="pagination" aria-label="Páginas de pedidos"><button id="pedidosAnterior" type="button">Anterior</button><span id="pedidosPagina"></span><button id="pedidosSiguiente" type="button">Siguiente</button></nav>
+</main>
+
+<dialog id="pedidoEditor" class="admin-order-dialog" aria-labelledby="pedidoTitulo">
+  <div class="admin-order-dialog-header"><div><span class="order-overline">Detalle del pedido</span><h2 id="pedidoTitulo">Pedido</h2><p id="pedidoFecha"></p></div><button id="cerrarPedido" type="button" class="admin-order-close" aria-label="Cerrar detalle">×</button></div>
+  <div class="admin-order-dialog-body">
+    <div class="admin-order-overview"><div><span>Comprador</span><strong id="pedidoComprador"></strong><small id="pedidoEmail"></small></div><div><span>Estado</span><strong id="pedidoEstado" class="admin-order-status"></strong></div><div><span>Total</span><strong id="pedidoTotal" class="admin-order-total"></strong></div></div>
+    <p id="reembolsoAviso" class="admin-order-alert" role="status" hidden></p>
+    <p id="pedidoSoloLectura" class="admin-order-note" hidden></p>
+    <p id="pedidoEditorMensaje" class="admin-order-alert" role="alert" hidden></p>
+    <form id="pedidoForm"><input name="id" type="hidden">
+      <section class="admin-order-section"><h3>Información del pedido</h3><div class="admin-order-fields"><label>Código<input name="codigo_pedido" maxlength="100" required></label><label>Comprador<select name="usuario_id" required><option value="">Selecciona comprador</option>{% for comprador in compradores %}<option value="{{ comprador.id }}">{{ comprador.nombre }} {{ comprador.apellidos }} · {{ comprador.email }}</option>{% endfor %}</select></label><label>Estado actual<input name="estado" readonly></label><label>Método de pago<select name="metodo_pago">{% for metodo in metodos_pago %}<option value="{{ metodo.value }}">{{ metodo.value|replace('_', ' ')|capitalize }}</option>{% endfor %}</select></label></div></section>
+      <section class="admin-order-section"><h3>Entrega y facturación</h3><div class="admin-order-fields">{% for campo, etiqueta in [('direccion_envio','Dirección de envío'),('direccion_facturacion','Dirección de facturación'),('telefono','Teléfono')] %}<label>{{ etiqueta }}<input name="{{ campo }}" maxlength="{{ 50 if campo == 'telefono' else 500 }}" {% if campo != 'telefono' %}required{% endif %}></label>{% endfor %}</div></section>
+      <section class="admin-order-section"><div class="admin-order-section-heading"><h3>Productos</h3><button class="clear-filters" id="agregarLinea" type="button">Añadir producto</button></div><div id="pedidoLineas"></div></section>
+      <section class="admin-order-section"><h3>Importes</h3><div class="admin-order-amounts"><label>Impuestos (€)<input name="impuesto" type="number" min="0" step="0.01" value="0" required></label><label>Coste de entrega (€)<input name="coste_entrega" type="number" min="0" step="0.01" value="0" required></label></div><p>El total se calcula a partir de los productos y estos importes.</p></section>
+      <div class="admin-order-dialog-footer"><button class="clear-filters" id="cancelarPedido" type="button">Cerrar</button><button class="add-cart" id="marcarEntregadoPedido" type="button" hidden>Marcar entregado</button><button class="add-cart" id="guardarPedido" type="submit">Guardar cambios</button></div>
+    </form>
+  </div>
+</dialog>
 <template id="lineaTemplate"><div class="order-line"><label>Producto<select data-line-product required><option value="">Selecciona producto</option>{% for producto in productos_pedido %}<option value="{{ producto.id }}" data-price="{{ producto.precio_oferta if producto.precio_oferta is not none and 0 <= producto.precio_oferta < producto.precio else producto.precio }}">{{ producto.nombre }} · Tienda {{ producto.tienda_id }}</option>{% endfor %}</select></label><label>Cantidad<input data-line-quantity type="number" step="1" min="1" max="1000000" value="1" required></label><label>Precio unitario (€)<input data-line-price type="number" step="0.01" min="0" required></label><button type="button" class="danger-button" data-remove-line>Quitar</button></div></template>
-</main>{% endblock %}
-{% block scripts %}<script src="/static/cuenta.js"></script><script src="/static/admin_pedidos.js"></script>{% endblock %}
+{% endblock %}
+{% block scripts %}<script src="/static/cuenta.js"></script><script src="/static/admin_pedidos.js?v=3"></script>{% endblock %}

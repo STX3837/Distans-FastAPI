@@ -34,7 +34,7 @@
 <dl><dt>Subtotal sin descuento</dt><dd>{{ '%.2f'|format(resumen.subtotal) }} €</dd><dt>Descuento</dt><dd>−{{ '%.2f'|format(resumen.descuento) }} €</dd><dt>IVA ({{ resumen.iva|float }} %)</dt><dd>{{ '%.2f'|format(resumen.impuesto) }} €</dd><dt>Envío</dt><dd>{{ '%.2f'|format(resumen.coste_entrega) }} €</dd><dt class="summary-total">Total (EUR)</dt><dd class="summary-total" id="checkoutTotal">{{ '%.2f'|format(resumen.total) }} €</dd></dl>
 <p>El total incluye impuestos y envío.</p></aside>
 </div>
-<section id="purchaseSuccess" hidden role="status"><h2>Pedido confirmado</h2><p id="successDetails"></p><a href="/inicio?q=">Seguir comprando</a></section>
+<section id="purchaseSuccess" hidden role="status"><h2>Pedido confirmado</h2><p id="successDetails"></p><a id="trackingLink" href="/pedidos/seguimiento">Seguir pedido</a><a href="/inicio?q=">Seguir comprando</a></section>
 </main>
 {% endblock %}
 {% block scripts %}<script src="/static/compra.js?v=5"></script>{% endblock %}

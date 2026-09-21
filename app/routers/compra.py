@@ -178,13 +178,16 @@ def finalizar_compra(datos: Compra, request: Request, db: Session = Depends(get_
                 telefono=datos.telefono, direccion_envio=json.dumps(datos.envio.model_dump(), ensure_ascii=False),
                 direccion_facturacion=json.dumps(datos.facturacion.model_dump(), ensure_ascii=False),
                 metodo_pago=MetodoPago.EFECTIVO if datos.metodo == "contrarrembolso" else MetodoPago.TARJETA_CREDITO,
-                estado=EstadoPedido.PENDIENTE, moneda="EUR", pago_completado=False,
+                estado=EstadoPedido.PREPARACION, moneda="EUR", pago_completado=False,
+                importe_pago_original=resumen["total"],
                 reserva_expira=datetime.utcnow() + timedelta(minutes=31) if datos.metodo == "inmediato" else None,
                 **{k: resumen[k] for k in ("subtotal", "descuento", "impuesto", "coste_entrega", "total")})
             for item in items:
                 pedido.items.append(ProductoPedido(producto_id=item["producto"]["id"], cantidad=item["cantidad"],
                     precio_unitario=item["importes"]["precio_unitario"], total=item["importes"]["total_item"]))
             db.add(pedido)
+            from app.estado_pedidos import sincronizar_subpedidos
+            sincronizar_subpedidos(db, pedido)
             db.commit()  # RI03: pedido persistido antes de llamar al pago.
         except IntegrityError:
             db.rollback()
@@ -192,9 +195,9 @@ def finalizar_compra(datos: Compra, request: Request, db: Session = Depends(get_
     checkout_url = None
     if pedido.metodo_pago != MetodoPago.EFECTIVO:
         checkout_url = abrir_pago(db, pedido)
-    elif pedido.estado == EstadoPedido.PENDIENTE:
+    elif pedido.estado == EstadoPedido.PREPARACION:
         from app.stripe_payments import vaciar_carrito_pedido
-        pedido.estado = EstadoPedido.CONFIRMADO
+        pedido.estado = EstadoPedido.PREPARACION
         vaciar_carrito_pedido(db, pedido)
         db.commit()
     return dict(codigo=pedido.codigo_pedido, estado=pedido.estado.value,

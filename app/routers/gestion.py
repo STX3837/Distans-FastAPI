@@ -342,7 +342,8 @@ def dashboard(tienda_id: int, request: Request, db: Session = Depends(get_db)):
     usuario = gestor(request, db)
     tienda = tienda_permitida(db, usuario, tienda_id)
     # Solo las líneas de esta tienda, incluso en pedidos que contienen varias tiendas.
-    lineas = db.query(ProductoPedido).join(Producto).filter(Producto.tienda_id == tienda.id).options(joinedload(ProductoPedido.pedido), joinedload(ProductoPedido.producto)).order_by(ProductoPedido.id.desc()).all()
+    lineas = db.query(ProductoPedido).join(Producto).filter(Producto.tienda_id == tienda.id,
+        ProductoPedido.cancelado.is_(False)).options(joinedload(ProductoPedido.pedido), joinedload(ProductoPedido.producto)).order_by(ProductoPedido.id.desc()).all()
     pedidos = {}
     for linea in lineas:
         pedido = linea.pedido

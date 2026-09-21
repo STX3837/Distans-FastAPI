@@ -161,7 +161,7 @@ Para probar localmente con Stripe CLI:
 stripe listen --forward-to localhost:8001/api/stripe/webhook
 ```
 
-Copia el secreto `whsec_...` mostrado por la CLI en `STRIPE_WEBHOOK_SECRET` y reinicia la aplicación. En Stripe Checkout, usa la tarjeta de prueba `4242 4242 4242 4242`, una fecha futura y cualquier CVC de tres dígitos. Comprueba que el pedido pasa de pendiente a confirmado al llegar el webhook.
+Copia el secreto `whsec_...` mostrado por la CLI en `STRIPE_WEBHOOK_SECRET` y reinicia la aplicación. En Stripe Checkout, usa la tarjeta de prueba `4242 4242 4242 4242`, una fecha futura y cualquier CVC de tres dígitos. Comprueba que el pago pasa de pendiente a completado al llegar el webhook; el pedido permanece en preparaci?n hasta la recogida de todos sus subpedidos.
 
 En Stripe, configura el endpoint HTTPS `/api/stripe/webhook` para los eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded` y `checkout.session.expired`. Usa el secreto específico del endpoint desplegado, distinto del de la CLI.
 
@@ -170,3 +170,5 @@ El servidor calcula el importe en céntimos de EUR, guarda el pedido y reserva e
 La aplicación no recoge números de tarjeta ni CVC. Únicamente transmite a Stripe el correo, los artículos, los importes y una referencia interna del pedido. Los impuestos siguen siendo configurables con `CHECKOUT_IVA` y el envío con `CHECKOUT_ENVIO`.
 
 Referencias: [Stripe Checkout](https://docs.stripe.com/payments/checkout/how-checkout-works), [confirmación de pedidos](https://docs.stripe.com/checkout/fulfillment), [reservas de inventario](https://docs.stripe.com/payments/checkout/managing-limited-inventory) y [verificación de firmas](https://docs.stripe.com/webhooks/signature).
+
+

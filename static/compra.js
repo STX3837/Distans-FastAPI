@@ -68,6 +68,7 @@
             document.getElementById('purchaseSuccess').hidden = false;
             document.getElementById('successDetails').textContent = 'Código: ' + result.codigo + '. Total: ' + result.total + ' €. ' +
                 (result.pago_completado ? 'Pago completado.' : 'Pago pendiente al recibir el pedido.');
+            document.getElementById('trackingLink').href = '/pedidos/seguimiento?codigo=' + encodeURIComponent(result.codigo);
         } catch (error) {feedback.textContent = error.message || 'No se pudo confirmar. Puedes volver a intentarlo.';}
         finally {pay.disabled = false;}
     });
