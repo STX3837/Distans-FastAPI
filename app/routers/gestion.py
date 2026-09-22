@@ -8,10 +8,11 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, field_validator, model_validator
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models import Categoria, CoordenadasTienda, Pedido, Producto, ProductoPedido, RolUsuario, Tienda, Usuario
+from app.models import Categoria, CoordenadasTienda, Pedido, Producto, ProductoPedido, RolUsuario, Tienda, Usuario, VisitaProducto, VisitaTienda
 from app.routers.auth import _validar_csrf
 from app.routers.users import _obtener_usuario_actual
 from app.routers.catalogo import pagina_publica, producto_publico
@@ -363,4 +364,23 @@ def dashboard(tienda_id: int, request: Request, db: Session = Depends(get_db)):
     return pagina_publica(request, db, "gestion_dashboard.html", {
         "tienda_gestion": datos_tienda(tienda), "tienda_activa": tienda.id,
         "pedidos_tienda": list(pedidos.values()), "stock_tienda": tienda.productos,
+    })
+
+
+@router.get("/gestion/tiendas/{tienda_id}/estadisticas")
+def estadisticas(tienda_id: int, request: Request, db: Session = Depends(get_db)):
+    usuario = gestor(request, db)
+    tienda = tienda_permitida(db, usuario, tienda_id)
+    visitas_tienda = db.query(func.count(VisitaTienda.id)).filter(VisitaTienda.tienda_id == tienda.id).scalar() or 0
+    visitas_por_producto = dict(db.query(VisitaProducto.producto_id, func.count(VisitaProducto.id)).join(
+        Producto, VisitaProducto.producto_id == Producto.id,
+    ).filter(Producto.tienda_id == tienda.id).group_by(VisitaProducto.producto_id).all())
+    metricas_productos = [{"id": producto.id, "nombre": producto.nombre,
+                           "visitas": visitas_por_producto.get(producto.id, 0)}
+                          for producto in sorted(tienda.productos, key=lambda item: (-visitas_por_producto.get(item.id, 0), item.nombre.lower()))]
+    return pagina_publica(request, db, "gestion_estadisticas.html", {
+        "tienda_gestion": datos_tienda(tienda), "tienda_activa": tienda.id,
+        "visitas_tienda": visitas_tienda,
+        "visitas_productos": sum(visitas_por_producto.values()),
+        "metricas_productos": metricas_productos,
     })

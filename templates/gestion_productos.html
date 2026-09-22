@@ -1,7 +1,7 @@
 {% extends "gestion_base.html" %}
 {% block title %}Productos de {{ tienda_gestion.nombre }} - Distans{% endblock %}
 {% block content %}<main class="catalog-page catalog-content"><h1>Productos · {{ tienda_gestion.nombre }}</h1>
-<div class="management-actions"><a class="clear-filters" href="/gestion/tiendas/{{ tienda_gestion.id }}">Ver pedidos y resumen</a><a class="clear-filters" href="/gestion/tiendas/{{ tienda_gestion.id }}/editar">Editar tienda</a></div>
+<div class="management-actions"><a class="clear-filters" href="/gestion/tiendas/{{ tienda_gestion.id }}">Ver pedidos y resumen</a><a class="clear-filters" href="/gestion/tiendas/{{ tienda_gestion.id }}/estadisticas">Ver estadísticas</a><a class="clear-filters" href="/gestion/tiendas/{{ tienda_gestion.id }}/editar">Editar tienda</a></div>
 <form class="search-form" method="get"><div><label for="searchProducts">Buscar producto</label><input id="searchProducts" name="q" value="{{ q }}"></div><button class="search-button">Buscar</button></form>
 <p>{{ total }} productos · Página {{ pagina }}</p><div class="product-grid management-product-grid">
 {% with gestion_tarjetas=true %}{% for producto in productos_gestion %}{% include 'tarjeta_producto.html' %}{% else %}<p class="empty-catalog">No hay productos.</p>{% endfor %}{% endwith %}

@@ -1,5 +1,6 @@
 import pytest
-from app.models import Categoria, MetodoPago, Pedido, ProductoPedido, RolUsuario, Tienda, Producto, Subpedido
+from datetime import datetime, timedelta
+from app.models import Categoria, MetodoPago, Pedido, ProductoPedido, RolUsuario, Tienda, Producto, Subpedido, VisitaProducto, VisitaTienda
 
 
 STORE = {"nombre": "Tienda pruebas", "direccion": "Carmona", "latitud": 37.47, "longitud": -5.64}
@@ -29,7 +30,7 @@ def test_seller_store_product_crud_and_pages(client, user_factory):
     product = response.json()
     assert product["descuento"] == 25
     assert client.get(base).json()["categorias"] == [Categoria.HOGAR_BRICOLAJE.value]
-    for path in ("/mi-tienda", "/gestion/tiendas/nueva", f'/gestion/tiendas/{store["id"]}', f'/gestion/tiendas/{store["id"]}/editar', f'/gestion/tiendas/{store["id"]}/productos'):
+    for path in ("/mi-tienda", "/gestion/tiendas/nueva", f'/gestion/tiendas/{store["id"]}', f'/gestion/tiendas/{store["id"]}/editar', f'/gestion/tiendas/{store["id"]}/productos', f'/gestion/tiendas/{store["id"]}/estadisticas'):
         page = client.get(path)
         assert page.status_code == 200
         assert "Mi tienda" in page.text
@@ -90,6 +91,7 @@ def test_single_store_seller_flow_and_stock_editor(client, user_factory):
     assert data['precio'] == PRODUCT['precio'] and data['categoria'] == PRODUCT['categoria']
     products_page = client.get(f'/gestion/tiendas/{store["id"]}/productos')
     assert 'id="createProduct"' in products_page.text and 'id="editStock"' in products_page.text
+    assert f'href="/gestion/tiendas/{store["id"]}/estadisticas"' in products_page.text
     other = user_factory(email='stockother@example.com', rol=RolUsuario.VENDEDOR)
     h = login(client, other)
     assert client.patch(url, json={'stock': 20}, headers=h).status_code == 404
@@ -121,7 +123,8 @@ def test_seller_cannot_read_foreign_public_or_management_data(client, user_facto
     for path in (f'/tiendas/{shop["id"]}', f'/productos/{product["id"]}', f'/api/productos/{product["id"]}',
                  f'/api/gestion/tiendas/{shop["id"]}', f'/api/gestion/tiendas/{shop["id"]}/productos',
                  f'/api/gestion/productos/{product["id"]}', f'/gestion/tiendas/{shop["id"]}',
-                 f'/gestion/tiendas/{shop["id"]}/editar', f'/gestion/tiendas/{shop["id"]}/productos'):
+                 f'/gestion/tiendas/{shop["id"]}/editar', f'/gestion/tiendas/{shop["id"]}/productos',
+                 f'/gestion/tiendas/{shop["id"]}/estadisticas'):
         response = client.get(path)
         assert response.status_code == 404
         assert PRODUCT['nombre'] not in response.text and STORE['nombre'] not in response.text
@@ -166,3 +169,49 @@ def test_dashboard_scopes_order_lines_and_preserves_history(client, db_session, 
     assert "Linea ajena" not in page.text
     assert client.delete(f'/api/gestion/productos/{product["id"]}', headers=h).status_code == 409
     assert client.delete(f'/api/gestion/tiendas/{store["id"]}', headers=h).status_code == 409
+
+
+def test_anonymous_store_and_product_visits_appear_in_seller_dashboard(client, db_session, user_factory):
+    seller = user_factory(rol=RolUsuario.VENDEDOR)
+    headers = login(client, seller)
+    store = client.post("/api/gestion/tiendas", json=STORE, headers=headers).json()
+    product = client.post(f'/api/gestion/tiendas/{store["id"]}/productos', json=PRODUCT, headers=headers).json()
+
+    # Las vistas del propietario no alteran sus propias métricas.
+    assert client.get(f'/productos/{product["id"]}').status_code == 200
+    assert db_session.query(VisitaProducto).count() == 0
+
+    assert client.post("/api/logout", headers=headers).status_code == 200
+    assert client.get(f'/tiendas/{store["id"]}').status_code == 200
+    assert client.get(f'/productos/{product["id"]}').status_code == 200
+    assert client.get(f'/productos/{product["id"]}').status_code == 200
+    buyer = user_factory(email="metrics-buyer@example.com")
+    login(client, buyer)
+    assert client.get(f'/productos/{product["id"]}').status_code == 200
+    assert client.get(f'/productos/{product["id"]}').status_code == 200
+
+    assert db_session.query(VisitaTienda).filter_by(tienda_id=store["id"]).count() == 1
+    product_visits = db_session.query(VisitaProducto).filter_by(producto_id=product["id"]).all()
+    assert len(product_visits) == 2
+    assert all(visit.fecha is not None for visit in product_visits)
+
+    # Transcurridos 60 minutos, el mismo comprador vuelve a contar.
+    buyer_hash = max(product_visits, key=lambda visit: visit.id).visitante_hash
+    db_session.query(VisitaProducto).filter_by(
+        producto_id=product["id"], visitante_hash=buyer_hash,
+    ).update({"fecha": datetime.utcnow() - timedelta(hours=1, seconds=1)})
+    db_session.commit()
+    assert client.get(f'/productos/{product["id"]}').status_code == 200
+    assert db_session.query(VisitaProducto).filter_by(producto_id=product["id"]).count() == 3
+
+    login(client, seller)
+    dashboard = client.get(f'/gestion/tiendas/{store["id"]}')
+    assert dashboard.status_code == 200
+    assert "Visitas a la tienda" not in dashboard.text
+    statistics = client.get(f'/gestion/tiendas/{store["id"]}/estadisticas')
+    assert statistics.status_code == 200
+    assert "Visitas a la tienda" in statistics.text
+    assert "Vistas de productos" in statistics.text
+    assert "Descubrir Premium" in statistics.text
+    assert '<strong>1</strong>' in statistics.text
+    assert '<strong>3</strong>' in statistics.text

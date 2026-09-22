@@ -61,6 +61,37 @@ def actualizar_filtros(engine):
         )
 
 
+def actualizar_visitas(engine):
+    """Añade el registro anónimo de visualizaciones a instalaciones existentes."""
+    if engine.dialect.name != 'postgresql':
+        return
+    with engine.begin() as connection:
+        connection.exec_driver_sql("""
+            CREATE TABLE IF NOT EXISTS visitas_tiendas (
+                id SERIAL PRIMARY KEY,
+                tienda_id INTEGER NOT NULL REFERENCES tiendas(id) ON DELETE CASCADE,
+                visitante_hash VARCHAR(64) NOT NULL,
+                fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        connection.exec_driver_sql("""
+            CREATE TABLE IF NOT EXISTS visitas_productos (
+                id SERIAL PRIMARY KEY,
+                producto_id INTEGER NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
+                visitante_hash VARCHAR(64) NOT NULL,
+                fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_visitas_tiendas_tienda_id ON visitas_tiendas (tienda_id)')
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_visitas_tiendas_fecha ON visitas_tiendas (fecha)')
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_visitas_productos_producto_id ON visitas_productos (producto_id)')
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_visitas_productos_fecha ON visitas_productos (fecha)')
+        connection.exec_driver_sql('ALTER TABLE visitas_tiendas ADD COLUMN IF NOT EXISTS visitante_hash VARCHAR(64)')
+        connection.exec_driver_sql('ALTER TABLE visitas_productos ADD COLUMN IF NOT EXISTS visitante_hash VARCHAR(64)')
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_visitas_tiendas_visitante_hash ON visitas_tiendas (visitante_hash)')
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_visitas_productos_visitante_hash ON visitas_productos (visitante_hash)')
+
+
 def actualizar_pedidos(engine):
     if engine.dialect.name != 'postgresql':
         return
