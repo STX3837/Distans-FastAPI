@@ -82,8 +82,11 @@ def producto_publico(producto):
         "destacado": producto.destacado, "marca": producto.marca, "stock": producto.stock,
         "categoria": producto.categoria.value,
         "valoracion_media": producto.valoracion_media, "modalidad_compra": producto.modalidad_compra,
+        "compra_online": tienda.compra_online,
         "tienda": {"id": tienda.id, "nombre": tienda.nombre, "direccion": tienda.direccion,
-                   "ubicacion": tienda.ubicacion, "horario": tienda.horario, "latitud": coordenadas.latitud if coordenadas else None,
+                   "ubicacion": tienda.ubicacion, "horario": tienda.horario, "plan": tienda.plan_efectivo,
+                   "suscripcion_activa": tienda.suscripcion_activa, "pasarela_activa": tienda.pasarela_activa,
+                   "latitud": coordenadas.latitud if coordenadas else None,
                    "longitud": coordenadas.longitud if coordenadas else None},
     }
 
@@ -142,8 +145,11 @@ def pagina_publica(request, db, name, contexto):
 
 def buscar(db, q, categoria, destacados, pagina, geo=(None, None, 0), tienda_id=None,
            precio_min=None, precio_max=None, valoracion_min=None, modalidad=None,
-           tienda_valoracion_min=None):
+           tienda_valoracion_min=None, tipo_catalogo="todo"):
     query = seleccionar(db, q, categoria, destacados)
+    if tipo_catalogo == "online":
+        query = query.filter(Tienda.plan == "Premium", Tienda.suscripcion_activa.is_(True), Tienda.pasarela_activa.is_(True),
+                             or_(Tienda.fecha_renovacion_plan.is_(None), Tienda.fecha_renovacion_plan > datetime.utcnow()))
     if tienda_id is not None:
         query = query.filter(Producto.tienda_id == tienda_id)
     precio_final = case((Producto.precio_oferta.isnot(None), Producto.precio_oferta), else_=Producto.precio)
@@ -161,6 +167,9 @@ def buscar(db, q, categoria, destacados, pagina, geo=(None, None, 0), tienda_id=
         Producto.destacado.desc(), Producto.id.desc(),
     ).offset((pagina - 1) * PAGE_SIZE).limit(PAGE_SIZE).all()
     tiendas_query = db.query(Tienda).join(Usuario, Tienda.vendedor_id == Usuario.id).filter(Usuario.activo.is_(True))
+    if tipo_catalogo == "online":
+        tiendas_query = tiendas_query.filter(Tienda.plan == "Premium", Tienda.suscripcion_activa.is_(True), Tienda.pasarela_activa.is_(True),
+                                             or_(Tienda.fecha_renovacion_plan.is_(None), Tienda.fecha_renovacion_plan > datetime.utcnow()))
     if tienda_id is not None:
         tiendas_query = tiendas_query.filter(Tienda.id == tienda_id)
     if tienda_valoracion_min is not None and tienda_valoracion_min > 0:
@@ -178,7 +187,7 @@ def buscar(db, q, categoria, destacados, pagina, geo=(None, None, 0), tienda_id=
          "imagen": t.imagen if t.imagen and (t.imagen.startswith(("https://", "http://")) or (t.imagen.startswith("/") and not t.imagen.startswith("//"))) else None,
          "latitud": t.coordenadas.latitud if t.coordenadas else None,
          "longitud": t.coordenadas.longitud if t.coordenadas else None,
-         "valoracion_media": t.valoracion_media} for t in tiendas], "total": total,
+         "valoracion_media": t.valoracion_media, "plan": t.plan_efectivo, "compra_online": t.compra_online} for t in tiendas], "total": total,
             "pagina": pagina, "paginas": ceil(total / PAGE_SIZE), "por_pagina": PAGE_SIZE}
 
 
@@ -188,6 +197,7 @@ def api_productos(request: Request, q: str = Query("", max_length=120), categori
                   filtros=Depends(filtros_opcionales),
                   valoracion_min: float | None = Query(None, ge=0, le=5, allow_inf_nan=False),
                   tienda_valoracion_min: float | None = Query(None, ge=0, le=5, allow_inf_nan=False),
+                  tipo_catalogo: Literal["todo", "online"] = "todo",
                   db: Session = Depends(get_db)):
     tienda_id, precio_min, precio_max, modalidad = filtros
     validar_precios(precio_min, precio_max)
@@ -200,7 +210,7 @@ def api_productos(request: Request, q: str = Query("", max_length=120), categori
             return {"productos": [], "tiendas": [], "total": 0, "pagina": pagina, "paginas": 0, "por_pagina": PAGE_SIZE}
         tienda_id = tienda.id
     return buscar(db, q.strip(), categoria, destacados, pagina, geo, tienda_id,
-                  precio_min, precio_max, valoracion_min, modalidad, tienda_valoracion_min)
+                  precio_min, precio_max, valoracion_min, modalidad, tienda_valoracion_min, tipo_catalogo)
 
 
 def validar_precios(precio_min, precio_max):
@@ -211,15 +221,20 @@ def validar_precios(precio_min, precio_max):
 @router.get("/api/tiendas")
 def api_tiendas(categoria: Categoria | None = Depends(categoria_filtrada),
                 valoracion_min: float | None = Query(None, ge=0, le=5, allow_inf_nan=False),
+                tipo_catalogo: Literal["todo", "online"] = "todo",
                 db: Session = Depends(get_db)):
     query = db.query(Tienda).join(Usuario, Tienda.vendedor_id == Usuario.id).filter(Usuario.activo.is_(True))
+    if tipo_catalogo == "online":
+        query = query.filter(Tienda.plan == "Premium", Tienda.suscripcion_activa.is_(True), Tienda.pasarela_activa.is_(True),
+                             or_(Tienda.fecha_renovacion_plan.is_(None), Tienda.fecha_renovacion_plan > datetime.utcnow()))
     if categoria:
         query = query.filter(Tienda.productos.any(Producto.categoria == categoria))
     if valoracion_min is not None and valoracion_min > 0:
         query = query.filter(Tienda.valoracion_media >= valoracion_min)
     return [{"id": tienda.id, "nombre": tienda.nombre,
              "categorias": [item.value for item in tienda.categorias],
-             "valoracion_media": tienda.valoracion_media} for tienda in query.order_by(Tienda.nombre).all()]
+             "valoracion_media": tienda.valoracion_media, "plan": tienda.plan_efectivo,
+             "compra_online": tienda.compra_online} for tienda in query.order_by(Tienda.nombre).all()]
 
 
 def vendedor_actual(request, db):
@@ -241,6 +256,7 @@ def inicio(request: Request, q: str = Query("", max_length=120), categoria: Cate
            filtros=Depends(filtros_opcionales),
            valoracion_min: float | None = Query(None, ge=0, le=5, allow_inf_nan=False),
            tienda_valoracion_min: float | None = Query(None, ge=0, le=5, allow_inf_nan=False),
+           tipo_catalogo: Literal["todo", "online"] = "todo",
            db: Session = Depends(get_db)):
     tienda_id, precio_min, precio_max, modalidad = filtros
     validar_precios(precio_min, precio_max)
@@ -248,10 +264,10 @@ def inicio(request: Request, q: str = Query("", max_length=120), categoria: Cate
         return RedirectResponse("/mi-tienda", status_code=303)
     q = q.strip()
     es_busqueda = bool(q or categoria or destacados or "q" in request.query_params or "categoria" in request.query_params)
-    es_busqueda = es_busqueda or bool(geo[2]) or any(value is not None for value in (
+    es_busqueda = es_busqueda or tipo_catalogo == "online" or bool(geo[2]) or any(value is not None for value in (
         tienda_id, precio_min, precio_max, valoracion_min, tienda_valoracion_min, modalidad))
     datos = buscar(db, q, categoria, destacados, pagina, geo, tienda_id,
-                   precio_min, precio_max, valoracion_min, modalidad, tienda_valoracion_min)
+                   precio_min, precio_max, valoracion_min, modalidad, tienda_valoracion_min, tipo_catalogo)
     def pagina_url(numero):
         params = {"pagina": numero}
         if request.query_params.get("tab") in {"mapa", "productos", "tiendas"}:
@@ -260,6 +276,7 @@ def inicio(request: Request, q: str = Query("", max_length=120), categoria: Cate
         if q: params["q"] = q
         if categoria: params["categoria"] = categoria.value
         if destacados: params["destacados"] = "true"
+        if tipo_catalogo == "online": params["tipo_catalogo"] = "online"
         for key, value in (("tienda_id", tienda_id), ("precio_min", precio_min), ("precio_max", precio_max),
                            ("valoracion_min", valoracion_min), ("tienda_valoracion_min", tienda_valoracion_min),
                            ("modalidad", modalidad)):
@@ -271,7 +288,8 @@ def inicio(request: Request, q: str = Query("", max_length=120), categoria: Cate
         "latitud": geo[0], "longitud": geo[1], "radio": geo[2],
         "precio_min": precio_min, "precio_max": precio_max,
         "valoracion_min": valoracion_min, "tienda_valoracion_min": tienda_valoracion_min,
-        "modalidad": modalidad,
+        "modalidad": modalidad, "tiendas_filtro": db.query(Tienda).join(Usuario, Tienda.vendedor_id == Usuario.id).filter(Usuario.activo.is_(True)).order_by(Tienda.nombre).all(),
+        "tipo_catalogo": tipo_catalogo,
         **datos, "q": q, "categoria_seleccionada": categoria.value if categoria else "",
         "categorias": list(Categoria), "destacados": destacados, "es_busqueda": es_busqueda,
         "titulo_productos": "Resultados de búsqueda" if es_busqueda else "Catálogo de productos",
@@ -535,7 +553,7 @@ def resumen_carrito(request, db, usuario):
         datos = producto_publico(producto)
         precio = datos["precio_oferta"] if datos["precio_oferta"] is not None else datos["precio"]
         items.append({"producto": datos, "cantidad": cantidad, "subtotal": round(precio * cantidad, 2),
-                      "disponible": datos["disponible"] and cantidad <= producto.stock})
+                      "disponible": datos["disponible"] and datos["compra_online"] and cantidad <= producto.stock})
     return {"items": items, "total": round(sum(i["subtotal"] for i in items), 2),
             "cantidad": sum(i["cantidad"] for i in items)}
 
@@ -569,6 +587,8 @@ def cambiar_carrito(request, db, producto_id, cantidad, sumar=False):
         raise HTTPException(409, "La cantidad máxima por producto es 999")
     if nueva:
         producto = obtener_producto(db, producto_id)
+        if not producto.tienda.compra_online:
+            raise HTTPException(409, "Esta tienda es solo un catálogo visual; sus productos no se pueden comprar")
         if not producto.disponible or nueva > producto.stock:
             raise HTTPException(409, "Producto no disponible o cantidad superior al stock")
         if str(producto_id) not in cantidades and len(cantidades) >= 50:

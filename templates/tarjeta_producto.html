@@ -1,10 +1,9 @@
                     <article class="product-card" data-product-shop="{{ producto.tienda.id }}" id="producto-{{ producto.id }}">
                         <div class="product-image">{% if producto.imagen %}<img src="{{ producto.imagen }}" alt="{{ producto.nombre }}" loading="lazy" onerror="this.hidden=true">{% else %}<span aria-hidden="true">🛍</span>{% endif %}{% if producto.destacado %}<span class="featured-badge">Destacado</span>{% endif %}</div>
-                        <div class="product-body"><p class="product-category">{{ producto.categoria }}</p><h3>{{ producto.nombre }}</h3>{% if producto.descripcion %}<p class="product-description">{{ producto.descripcion }}</p>{% endif %}
+                        <div class="product-body"><p class="product-category">{{ producto.categoria }}</p><h3>{% if gestion_tarjetas|default(false) %}{{ producto.nombre }}{% else %}<a class="product-card-link" href="/productos/{{ producto.id }}" aria-label="Ver ficha de {{ producto.nombre }}">{{ producto.nombre }}</a>{% endif %}</h3>{% if producto.descripcion %}<p class="product-description">{{ producto.descripcion }}</p>{% endif %}
                         <p class="rating-summary">Valoración: {% if producto.valoracion_media is not none %}{{ "%.1f"|format(producto.valoracion_media) }} / 5{% else %}Sin valoraciones{% endif %}</p>
                         {% include "precio.html" %}
-                        <p class="availability">{{ 'Disponible' if producto.disponible else 'No disponible' }}</p>
-                        <a class="map-link" href="/productos/{{ producto.id }}">Ver ficha del producto</a>
+                        {% if producto.compra_online %}<p class="availability">{{ 'Disponible' if producto.disponible else 'No disponible' }}</p>{% endif %}
                         {% if es_comprador %}<button type="button" class="favorite-button" data-favorite-type="productos" data-favorite-id="{{ producto.id }}" aria-pressed="false">♡ Guardar producto</button>{% endif %}
                         {% if gestion_tarjetas|default(false) %}
                         {% if producto.marca %}<p class="shop-address">Marca: {{ producto.marca }}</p>{% endif %}
@@ -12,17 +11,18 @@
                         <div class="stock-edit-controls" hidden><label for="stock-{{ producto.id }}">Stock</label><input id="stock-{{ producto.id }}" type="number" min="0" max="1000000" step="1" value="{{ producto.stock }}" data-stock-product="{{ producto.id }}" required></div>
                         <div class="management-actions"><button type="button" class="add-cart" data-edit-product='{{ producto|tojson|forceescape }}'>Editar / categoría</button><button type="button" class="danger-button" data-delete-product="{{ producto.id }}">Eliminar</button></div>
                         {% else %}
-                        <div class="product-cart-controls">
+                        {% if not producto.compra_online %}<p class="visual-catalog-notice"><span aria-hidden="true">&#128065;</span> Cat&aacute;logo visual <small>No disponible para compra</small></p>{% else %}<div class="product-cart-controls">
                         <label for="cantidad-producto-{{ producto.id }}">Cantidad</label>
                         <input id="cantidad-producto-{{ producto.id }}" data-add-quantity="{{ producto.id }}" type="number" min="1" max="{{ [producto.stock, 999]|min if producto.disponible else 1 }}" step="1" value="1" required {% if not producto.disponible or not puede_comprar %}disabled{% endif %}>
                         <button class="add-cart" type="button" data-add-cart="{{ producto.id }}" {% if not producto.disponible or not puede_comprar %}disabled{% endif %}>Añadir al carrito</button>
                         <button class="add-cart buy-now" type="button" data-add-cart="{{ producto.id }}" data-buy-now {% if not producto.disponible or not puede_comprar %}disabled{% endif %}>Comprar ya</button>
                         </div>
+                        {% endif %}
                         {% if tienda is not defined %}
                         <p class="shop-name"><a href="/tiendas/{{ producto.tienda.id }}">{{ producto.tienda.nombre }}</a></p>{% if producto.tienda.direccion %}<p class="shop-address">{{ producto.tienda.direccion }}</p>{% endif %}
                         {% if producto.tienda.latitud is not none %}<button class="map-link" type="button" data-shop-id="{{ producto.tienda.id }}">Ver tienda en el mapa</button>{% else %}<p class="location-missing">Ubicación de la tienda pendiente</p>{% endif %}
                         {% endif %}
                         {% endif %}
-                        {% if producto.stock <= 0 %}<p class="stock-note">Agotado</p>{% endif %}
+                        {% if producto.compra_online and producto.stock <= 0 %}<p class="stock-note">Agotado</p>{% endif %}
                         </div>
                     </article>

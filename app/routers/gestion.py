@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 from urllib.parse import urlencode
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import RedirectResponse
@@ -67,6 +68,10 @@ class TiendaDatos(BaseModel):
     direccion: str = Field(min_length=1, max_length=300)
     ubicacion: str = Field(default="", max_length=200)
     horario: str = Field(default="", max_length=300)
+    plan: Literal["Freemium", "Premium"] = "Premium"
+    suscripcion_activa: bool = True
+    fecha_renovacion_plan: datetime | None = None
+    pasarela_activa: bool = True
     imagen: str = Field(default="", max_length=1000)
     latitud: float = Field(ge=-90, le=90, allow_inf_nan=False)
     longitud: float = Field(ge=-180, le=180, allow_inf_nan=False)
@@ -112,7 +117,8 @@ class ProductoDatos(BaseModel):
 def datos_tienda(tienda):
     coords = tienda.coordenadas
     categorias = {categoria.value for categoria in tienda.categorias}
-    return {**{k: getattr(tienda, k) for k in ("id", "nombre", "descripcion", "direccion", "ubicacion", "horario", "imagen", "vendedor_id", "valoracion_media")},
+    return {**{k: getattr(tienda, k) for k in ("id", "nombre", "descripcion", "direccion", "ubicacion", "horario", "imagen", "vendedor_id", "valoracion_media", "plan", "suscripcion_activa", "fecha_alta_plan", "fecha_renovacion_plan", "pasarela_activa")},
+            "plan_efectivo": tienda.plan_efectivo,
             "categorias": sorted(categorias), "latitud": coords.latitud if coords else None,
             "longitud": coords.longitud if coords else None,
             "fecha_creacion": tienda.fecha_creacion, "fecha_actualizacion": tienda.fecha_actualizacion}
@@ -131,9 +137,13 @@ def guardar_tienda(db, usuario, tienda, datos):
         if existente is not None:
             raise HTTPException(409, "Este vendedor ya tiene una tienda")
     if tienda is None:
-        tienda = Tienda(vendedor_id=vendedor_id)
+        tienda = Tienda(vendedor_id=vendedor_id, plan="Freemium", suscripcion_activa=False, pasarela_activa=False)
         db.add(tienda)
-    for key, value in datos.model_dump(exclude={"latitud", "longitud", "vendedor_id"}).items():
+    campos_plan = {"plan", "suscripcion_activa", "fecha_renovacion_plan", "pasarela_activa"}
+    excluidos = {"latitud", "longitud", "vendedor_id"}
+    if usuario.rol != RolUsuario.ADMIN:
+        excluidos |= campos_plan
+    for key, value in datos.model_dump(exclude=excluidos).items():
         setattr(tienda, key, value)
     tienda.vendedor_id = vendedor_id
     tienda.fecha_actualizacion = datetime.utcnow()

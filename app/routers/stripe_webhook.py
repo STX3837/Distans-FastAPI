@@ -2,7 +2,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import MetodoPago, Pedido
+from app.models import MetodoPago, Pedido, PagoPlan
+from app.plan_payments import aplicar_pago_plan
 from app.stripe_payments import aplicar_sesion, configuracion, cliente
 
 router = APIRouter(tags=['Stripe'])
@@ -22,6 +23,18 @@ async def webhook_stripe(request: Request, db: Session = Depends(get_db)):
     if event['type'] not in {'checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.expired'}:
         return {'received': True}
     session = event['data']['object']
+    pago_plan_id = session.get('metadata', {}).get('pago_plan_id', '')
+    if str(pago_plan_id).isdecimal():
+        pago_plan = db.query(PagoPlan).filter_by(id=int(pago_plan_id)).with_for_update().first()
+        if pago_plan is None:
+            return {'received': True}
+        try:
+            aplicar_pago_plan(db, pago_plan, session)
+            db.commit()
+        except ValueError:
+            db.rollback()
+            raise HTTPException(400, 'El evento no corresponde al pago del plan')
+        return {'received': True}
     reference = session.get('metadata', {}).get('pedido_id', '')
     if not str(reference).isdecimal():
         return {'received': True}

@@ -28,6 +28,29 @@ def actualizar_filtros(engine):
         }.items():
             for name, definition in columns.items():
                 connection.exec_driver_sql(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {name} {definition}')
+        for name, definition in {
+            'plan': "VARCHAR(8) NOT NULL DEFAULT 'Premium'",
+            'suscripcion_activa': 'BOOLEAN NOT NULL DEFAULT TRUE',
+            'fecha_alta_plan': 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP',
+            'fecha_renovacion_plan': 'TIMESTAMP',
+            'pasarela_activa': 'BOOLEAN NOT NULL DEFAULT TRUE',
+        }.items():
+            connection.exec_driver_sql(f'ALTER TABLE tiendas ADD COLUMN IF NOT EXISTS {name} {definition}')
+        connection.exec_driver_sql("""
+            CREATE TABLE IF NOT EXISTS pagos_plan (
+                id SERIAL PRIMARY KEY,
+                tienda_id INTEGER NOT NULL REFERENCES tiendas(id) ON DELETE CASCADE,
+                vendedor_id INTEGER NOT NULL REFERENCES usuarios(id),
+                importe_centimos INTEGER NOT NULL DEFAULT 1499,
+                moneda VARCHAR(3) NOT NULL DEFAULT 'eur',
+                estado VARCHAR(12) NOT NULL DEFAULT 'pendiente',
+                stripe_session_id VARCHAR UNIQUE,
+                fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                fecha_pago TIMESTAMP,
+                fecha_fin TIMESTAMP
+            )
+        """)
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_pagos_plan_tienda_id ON pagos_plan (tienda_id)')
         connection.exec_driver_sql(
             'UPDATE productos SET valoracion_media = NULL WHERE NOT EXISTS '
             '(SELECT 1 FROM valoraciones_productos WHERE valoraciones_productos.producto_id = productos.id)'

@@ -3,7 +3,7 @@
 {% block content %}
 <main class="catalog-page catalog-content"><section class="card admin-card"><div class="results-heading"><h1>Cuentas</h1><button type="button" class="add-cart" id="crearCuenta">Crear cuenta</button></div>
 <form class="search-form" id="buscarCuentas" role="search"><div><label for="busquedaCuentas">Buscar cuenta</label><input id="busquedaCuentas" maxlength="120" placeholder="Nombre, apellidos o email"></div><div><label for="filtroRol">Rol</label><select id="filtroRol"><option value="">Todos</option><option value="comprador">Comprador</option><option value="vendedor">Vendedor</option><option value="admin">Administrador</option></select></div><button type="submit" class="search-button">Buscar</button><button type="button" class="clear-filters" id="limpiarCuentas">Quitar filtros</button></form>
-<p id="adminMensaje" role="status" aria-live="polite"></p>
+<p>Al editar una cuenta de vendedor tambi&eacute;n puedes gestionar el plan de su tienda.</p><p id="adminMensaje" role="status" aria-live="polite"></p>
 <div class="table-scroll"><table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="usuariosTabla"></tbody></table></div>
 <button type="button" id="anterior">Anterior</button> <span id="pagina"></span> <button type="button" id="siguiente">Siguiente</button>
 <dialog id="accountEditor" aria-labelledby="formTitle">
@@ -16,9 +16,16 @@
 <div class="field"><label for="codigo_postal">Código postal</label><input id="codigo_postal" name="codigo_postal" type="text"></div>
 <div class="field"><label for="rol">Rol</label><select id="rol" name="rol"><option value="comprador">Comprador</option><option value="vendedor">Vendedor</option><option value="admin">Administrador</option></select></div>
 <div class="field"><label for="activo"><input id="activo" type="checkbox" checked> Cuenta activa</label></div>
+<fieldset id="subscriptionFields" hidden><legend>Suscripci&oacute;n de la tienda</legend><p id="subscriptionStore"></p>
+<div class="field"><label for="subscriptionPlan">Plan</label><select id="subscriptionPlan"><option value="Freemium">Freemium</option><option value="Premium">Premium</option></select></div>
+<div class="field"><label for="subscriptionActive"><input id="subscriptionActive" type="checkbox"> Suscripci&oacute;n activa</label></div>
+<div class="field"><label for="subscriptionGateway"><input id="subscriptionGateway" type="checkbox"> Pasarela de compra activa</label></div>
+<div class="field"><label for="subscriptionStart">Fecha de alta</label><input id="subscriptionStart" type="datetime-local"></div>
+<div class="field"><label for="subscriptionRenewal">Fecha de vencimiento</label><input id="subscriptionRenewal" type="datetime-local"></div>
+<p id="subscriptionHelp">Al elegir Freemium se desactivar&aacute;n la suscripci&oacute;n y la compra online.</p></fieldset>
 <div class="field" id="passwordField"><label for="contrasena">Contraseña inicial (8–128 caracteres)</label><input id="contrasena" name="contrasena" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></div>
 <button class="button" type="submit">Guardar usuario</button> <button id="cancelar" type="button">Cancelar</button></form>
 </dialog>
 </section></main>
 {% endblock %}
-{% block scripts %}<script src="/static/cuenta.js"></script>{% endblock %}
+{% block scripts %}<script src="/static/cuenta.js?v=suscripciones-admin-2"></script>{% endblock %}

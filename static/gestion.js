@@ -43,6 +43,11 @@
             try {
                 const form = new FormData(storeForm), data = Object.fromEntries(form);
                 data.imagen = await imageFor(storeForm);
+                if (storeForm.elements.suscripcion_activa) {
+                    data.suscripcion_activa = storeForm.elements.suscripcion_activa.checked;
+                    data.pasarela_activa = storeForm.elements.pasarela_activa.checked;
+                    data.fecha_renovacion_plan = data.fecha_renovacion_plan || null;
+                }
                 data.latitud = Number(data.latitud); data.longitud = Number(data.longitud);
                 if (data.vendedor_id) data.vendedor_id = Number(data.vendedor_id);
                 const id = storeForm.dataset.storeId;
