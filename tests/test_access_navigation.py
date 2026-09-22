@@ -5,6 +5,8 @@ def test_access_screen_has_three_options(client):
     assert 'href="/login"' in response.text
     assert 'action="/invitado"' in response.text
     assert "Entrar como invitado" in response.text
+    token = client.cookies.get("csrf_token")
+    assert token and f'name="csrf_token" value="{token}"' in response.text
     assert 'id="productsMap"' not in response.text
 
 
@@ -24,6 +26,17 @@ def test_guest_clears_authenticated_session_with_csrf(client, user_factory):
     assert response.status_code == 303 and response.headers["location"] == "/inicio"
     assert client.get("/usuarios/me").status_code == 401
     assert client.cookies.get("csrf_token") is None
+
+
+def test_guest_button_restores_missing_csrf_cookie_for_authenticated_session(client, user_factory):
+    user = user_factory()
+    assert client.post("/api/login", json={"email": user.email, "contrasena": "clave12345"}).status_code == 200
+    client.cookies.delete("csrf_token")
+    access = client.get("/")
+    token = client.cookies.get("csrf_token")
+    assert token and f'name="csrf_token" value="{token}"' in access.text
+    response = client.post("/invitado", data={"csrf_token": token}, follow_redirects=False)
+    assert response.status_code == 303 and response.headers["location"] == "/inicio"
 
 
 def test_authenticated_login_and_legacy_welcome_lead_to_home(client, user_factory):

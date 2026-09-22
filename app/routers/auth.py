@@ -50,9 +50,13 @@ def _validar_csrf(request: Request, token_formulario: str | None = None) -> None
 
 @router.get("/", response_class=HTMLResponse)
 def pagina_acceso(request: Request):
-    return templates.TemplateResponse(request=request, name="acceso.html", context={
-        "csrf_token": request.session.get("csrf_token", ""),
+    csrf_token = request.session.setdefault("csrf_token", secrets.token_urlsafe(32))
+    response = templates.TemplateResponse(request=request, name="acceso.html", context={
+        "csrf_token": csrf_token,
     })
+    response.headers["Cache-Control"] = "no-store"
+    response.set_cookie("csrf_token", csrf_token, samesite="lax", secure=request.url.scheme == "https")
+    return response
 
 
 @router.post("/invitado")

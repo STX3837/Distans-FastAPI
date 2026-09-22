@@ -1,4 +1,20 @@
 (() => {
+    const filtersButton = document.querySelector('[data-filters-button]');
+    const filtersPanel = document.querySelector('[data-filters-panel]');
+    if (filtersButton && filtersPanel) {
+        filtersButton.addEventListener('click', () => {
+            const open = filtersPanel.hidden;
+            filtersPanel.hidden = !open;
+            filtersButton.setAttribute('aria-expanded', String(open));
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && !filtersPanel.hidden) {
+                filtersPanel.hidden = true;
+                filtersButton.setAttribute('aria-expanded', 'false');
+                filtersButton.focus();
+            }
+        });
+    }
     document.querySelectorAll('[data-rating-filter]').forEach(slider => {
         const output = slider.parentElement.querySelector('output');
         slider.addEventListener('input', () => {output.value = Number(slider.value).toFixed(1);});
