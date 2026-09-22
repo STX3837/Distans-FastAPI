@@ -269,9 +269,9 @@ def inicio(request: Request, q: str = Query("", max_length=120), categoria: Cate
     return pagina_publica(request, db, "inicio.html", {
         "vista_inicio": request.query_params.get("tab") if request.query_params.get("tab") in {"mapa", "productos", "tiendas"} else ("productos" if es_busqueda else "mapa"),
         "latitud": geo[0], "longitud": geo[1], "radio": geo[2],
-        "tienda_id_seleccionada": tienda_id, "precio_min": precio_min, "precio_max": precio_max,
+        "precio_min": precio_min, "precio_max": precio_max,
         "valoracion_min": valoracion_min, "tienda_valoracion_min": tienda_valoracion_min,
-        "modalidad": modalidad, "tiendas_filtro": db.query(Tienda).join(Usuario, Tienda.vendedor_id == Usuario.id).filter(Usuario.activo.is_(True)).order_by(Tienda.nombre).all(),
+        "modalidad": modalidad,
         **datos, "q": q, "categoria_seleccionada": categoria.value if categoria else "",
         "categorias": list(Categoria), "destacados": destacados, "es_busqueda": es_busqueda,
         "titulo_productos": "Resultados de búsqueda" if es_busqueda else "Catálogo de productos",

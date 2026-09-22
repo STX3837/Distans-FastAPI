@@ -87,6 +87,15 @@ body:has(.market-header) #productsMap{height:calc(100dvh - 190px);}
 .market-header .search-form .rating-filter label{grid-column:1/-1;}
 .market-header .search-form .rating-filter input[type=range]{width:100%;height:36px;padding:0;border:0;background:transparent;accent-color:#246b4d;cursor:pointer;}
 .market-header .search-form .rating-filter output{min-width:2.5ch;font-size:13px;font-variant-numeric:tabular-nums;text-align:right;}
+.market-header .search-form{position:relative;overflow:visible;}
+.filters-button{height:36px;padding:0 18px;border:1px solid #246b4d;border-radius:8px;background:white;color:#246b4d;font:inherit;cursor:pointer;white-space:nowrap;}
+.filters-button[aria-expanded=true]{background:#e2f0e9;}
+.advanced-filters{position:absolute;top:100%;left:12px;right:12px;z-index:1100;display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));align-items:end;gap:14px;padding:18px;background:white;border:1px solid #bdd0c6;border-radius:10px;box-shadow:0 8px 24px #16354926;}
+.advanced-filters[hidden]{display:none;}
+.market-header .search-form .advanced-filters>div{min-width:0;}
+.market-header .search-form .advanced-filters>.featured-filter{display:flex;align-items:center;height:36px;margin:0;gap:5px;}
+.market-header .search-form .advanced-filters>.clear-filters{justify-self:start;}
+@media(max-width:700px){.advanced-filters{grid-template-columns:1fr;max-height:65vh;overflow:auto;}.market-header .search-form{flex-wrap:nowrap;}.market-header .search-form>div:first-child{min-width:0;flex:1;}}
 .rating-summary{color:#246b4d;font-weight:600;}
 .rating-form{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:14px 0;}
 .rating-form select{height:40px;padding:0 8px;border:1px solid #bdd0c6;border-radius:8px;background:white;}
