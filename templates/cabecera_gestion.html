@@ -9,7 +9,7 @@
 <nav class="market-tabs" aria-label="Panel de administración"><a href="/admin/tiendas" {% if not panel_cuentas %}aria-current="page"{% endif %}>Tiendas</a><a href="/admin/usuarios/panel" {% if panel_cuentas %}aria-current="page"{% endif %}>Cuentas</a></nav>
 {% else %}
 <nav class="market-tabs" aria-label="Gestión de tienda">
-{% if tienda_activa %}{% if es_admin %}<a href="/gestion/tiendas/{{ tienda_activa }}">Resumen</a>{% endif %}<a href="/gestion/tiendas/{{ tienda_activa }}/pedidos">Pedidos</a><a href="/gestion/tiendas/{{ tienda_activa }}/productos">Productos</a><a href="/gestion/tiendas/{{ tienda_activa }}/editar">Editar tienda</a>
+{% if tienda_activa %}{% if es_admin %}<a href="/gestion/tiendas/{{ tienda_activa }}">Resumen</a>{% endif %}<a href="/gestion/tiendas/{{ tienda_activa }}/pedidos">Pedidos</a><a href="/gestion/tiendas/{{ tienda_activa }}/productos">Productos</a><a href="/gestion/tiendas/{{ tienda_activa }}/estadisticas">Estadísticas</a><a href="/gestion/tiendas/{{ tienda_activa }}/editar">Editar tienda</a>
 {% elif es_admin %}<a href="/mi-tienda">Tiendas</a><a href="/gestion/tiendas/nueva">Registrar tienda</a>
 {% else %}<span>Productos</span><span>Editar tienda</span>{% endif %}
 </nav>{% endif %}</header>

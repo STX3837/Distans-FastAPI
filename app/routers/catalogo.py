@@ -2,17 +2,18 @@
 from math import ceil, radians, sin, cos, asin, sqrt, isfinite
 from typing import Literal
 import secrets
-from datetime import datetime
+import hashlib
+from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import or_, case, func
+from sqlalchemy import or_, case, func, text
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models import Carrito, ProductoCarrito, Categoria, CoordenadasTienda, Producto, RolUsuario, Tienda, Usuario, ValoracionProducto, ValoracionTienda, ComentarioProducto, ComentarioTienda
+from app.models import Carrito, ProductoCarrito, Categoria, CoordenadasTienda, Producto, RolUsuario, Tienda, Usuario, ValoracionProducto, ValoracionTienda, ComentarioProducto, ComentarioTienda, VisitaProducto, VisitaTienda
 from app.routers.auth import templates, _validar_csrf
 from app.routers.users import _obtener_usuario_actual
 
@@ -250,6 +251,40 @@ def limitar_tienda_vendedor(request, db, tienda_id):
     return vendedor
 
 
+def registrar_visita_anonima(request, db, visita):
+    """Cuenta como máximo una visita por ficha y visitante cada 60 minutos."""
+    usuario = None
+    if request.session.get("usuario"):
+        try:
+            usuario = _obtener_usuario_actual(request, db)
+            if usuario.rol != RolUsuario.COMPRADOR:
+                return
+        except HTTPException:
+            request.session.clear()
+    if usuario:
+        identificador = f"usuario:{usuario.id}:{usuario.contrasena_hash}"
+    else:
+        identificador = request.session.setdefault("visitante_metricas", secrets.token_urlsafe(32))
+    visitante_hash = hashlib.sha256(identificador.encode()).hexdigest()
+    modelo = type(visita)
+    campo_id = "tienda_id" if isinstance(visita, VisitaTienda) else "producto_id"
+    entidad_id = getattr(visita, campo_id)
+    if db.bind.dialect.name == "postgresql":
+        clave = f"{modelo.__tablename__}:{entidad_id}:{visitante_hash}"
+        bloqueo = int.from_bytes(hashlib.sha256(clave.encode()).digest()[:8], "big", signed=True)
+        db.execute(text("SELECT pg_advisory_xact_lock(:bloqueo)"), {"bloqueo": bloqueo})
+    repetida = db.query(modelo.id).filter(
+        getattr(modelo, campo_id) == entidad_id,
+        modelo.visitante_hash == visitante_hash,
+        modelo.fecha > datetime.utcnow() - timedelta(hours=1),
+    ).first()
+    if repetida:
+        return
+    visita.visitante_hash = visitante_hash
+    db.add(visita)
+    db.commit()
+
+
 @router.get("/inicio", response_class=HTMLResponse)
 def inicio(request: Request, q: str = Query("", max_length=120), categoria: Categoria | None = Depends(categoria_filtrada),
            destacados: bool = False, pagina: int = Query(1, ge=1), geo=Depends(geografia),
@@ -315,6 +350,7 @@ def catalogo_tienda(request: Request, tienda_id: int, q: str = Query("", max_len
     ).first()
     if tienda is None:
         raise HTTPException(404, "Tienda no encontrada")
+    registrar_visita_anonima(request, db, VisitaTienda(tienda_id=tienda.id))
     q = q.strip()
     datos = buscar(db, q, categoria, destacados, pagina, tienda_id=tienda.id)
     def pagina_url(numero):
@@ -355,6 +391,7 @@ def ficha_api(producto_id: int, request: Request, db: Session = Depends(get_db))
 def ficha(request: Request, producto_id: int, db: Session = Depends(get_db)):
     registro = obtener_producto(db, producto_id)
     limitar_tienda_vendedor(request, db, registro.tienda_id)
+    registrar_visita_anonima(request, db, VisitaProducto(producto_id=registro.id))
     producto = producto_publico(registro)
     return pagina_publica(request, db, "producto.html", {"producto": producto, "tienda_activa": producto["tienda"]["id"],
                                                    "valoracion_usuario": puntuacion_usuario(request, db, ValoracionProducto, producto_id),

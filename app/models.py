@@ -141,6 +141,7 @@ class Tienda(Base):
     vendedor = relationship("Usuario", back_populates="tiendas", foreign_keys=[vendedor_id])
     productos = relationship("Producto", back_populates="tienda", cascade="all, delete-orphan")
     coordenadas = relationship("CoordenadasTienda", back_populates="tienda", uselist=False, cascade="all, delete-orphan")
+    visitas = relationship("VisitaTienda", back_populates="tienda", cascade="all, delete-orphan")
     @property
     def plan_efectivo(self):
         return "Premium" if (self.plan == "Premium" and self.suscripcion_activa and
@@ -220,6 +221,29 @@ class Producto(Base):
     tienda = relationship("Tienda", back_populates="productos")
     carrito_items = relationship("ProductoCarrito", back_populates="producto", cascade="all, delete-orphan")
     pedido_items = relationship("ProductoPedido", back_populates="producto", cascade="all, delete-orphan")
+    visitas = relationship("VisitaProducto", back_populates="producto", cascade="all, delete-orphan")
+
+
+class VisitaTienda(Base):
+    """Visualización anónima de la ficha pública de una tienda (RI15/RF35)."""
+    __tablename__ = "visitas_tiendas"
+
+    id = Column(Integer, primary_key=True)
+    tienda_id = Column(Integer, ForeignKey("tiendas.id", ondelete="CASCADE"), nullable=False, index=True)
+    visitante_hash = Column(String(64), nullable=False, index=True)
+    fecha = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    tienda = relationship("Tienda", back_populates="visitas")
+
+
+class VisitaProducto(Base):
+    """Visualización anónima de la ficha pública de un producto (RI15/RF35)."""
+    __tablename__ = "visitas_productos"
+
+    id = Column(Integer, primary_key=True)
+    producto_id = Column(Integer, ForeignKey("productos.id", ondelete="CASCADE"), nullable=False, index=True)
+    visitante_hash = Column(String(64), nullable=False, index=True)
+    fecha = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    producto = relationship("Producto", back_populates="visitas")
 
 
 class ProductoFavorito(Base):
