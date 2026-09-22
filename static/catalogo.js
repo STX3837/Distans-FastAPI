@@ -4,6 +4,8 @@
         slider.addEventListener('input', () => {output.value = Number(slider.value).toFixed(1);});
     });
     const status = document.getElementById('mapStatus');
+    const type = document.querySelector('[name=tipo_catalogo]');
+    if (type) type.addEventListener('change', () => type.form.requestSubmit());
     let map;
     let activeTab;
     function showTab(name) {

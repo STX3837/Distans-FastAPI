@@ -155,6 +155,8 @@ def guardar(db, pedido, datos):
     for linea in datos.lineas:
         producto = db.get(Producto, linea.producto_id)
         if producto is None: raise HTTPException(422, "Producto no encontrado")
+        if not producto.tienda.compra_online:
+            raise HTTPException(409, "Esta tienda es solo un catálogo visual; sus productos no se pueden incluir en pedidos")
         precio = linea.precio_unitario
         if precio is None:
             precio = producto.precio_oferta if producto.precio_oferta is not None and 0 <= producto.precio_oferta < producto.precio else producto.precio

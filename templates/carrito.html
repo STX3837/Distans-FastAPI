@@ -11,7 +11,7 @@
 {% if producto.tienda is defined %}<p>Tienda: <a href="/tiendas/{{ producto.tienda.id }}">{{ producto.tienda.nombre }}</a></p>{% endif %}
 <p class="cart-meta">{{ producto.categoria|default('') }}{% if producto.marca|default(none) %} · {{ producto.marca }}{% endif %}</p>
 {% include "precio.html" %}
-{% if item.disponible %}<p class="cart-available">● Disponible</p>{% else %}<p class="availability">No disponible en la cantidad seleccionada. Reduce la cantidad o elimina el producto.</p>{% endif %}
+{% if item.disponible %}<p class="cart-available">● Disponible</p>{% elif producto.compra_online is defined and not producto.compra_online %}<p class="availability">Esta tienda es solo un catálogo visual. Elimina este producto del carrito.</p>{% else %}<p class="availability">No disponible en la cantidad seleccionada. Reduce la cantidad o elimina el producto.</p>{% endif %}
 <div class="cart-controls">
 <label for="cantidad-{{ producto.id }}">Cantidad</label><input id="cantidad-{{ producto.id }}" data-cart-quantity="{{ producto.id }}" type="number" min="1" max="999" value="{{ item.cantidad }}">
 <button class="add-cart" data-update-cart="{{ producto.id }}" type="button">Actualizar</button>

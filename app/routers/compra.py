@@ -75,6 +75,8 @@ def preparar_items(db, cantidades):
     items = []
     for producto_id, cantidad in sorted(cantidades.items(), key=lambda pair: int(pair[0])):
         producto = obtener_producto(db, int(producto_id))
+        if not producto.tienda.compra_online:
+            raise HTTPException(409, "Esta tienda es solo un catálogo visual; no se puede comprar: " + producto.nombre)
         if not producto.disponible or producto.stock < cantidad:
             raise HTTPException(409, "Producto no disponible o cantidad superior al stock: " + producto.nombre)
         items.append(dict(producto=producto_publico(producto), cantidad=cantidad,

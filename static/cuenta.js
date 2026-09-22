@@ -48,10 +48,13 @@ bindAccountForm('resetForm', 'recoveryMensaje', async (form, message) => {
 const adminForm = document.getElementById('adminForm');
 if (adminForm) {
     const editor = document.getElementById('accountEditor');
-    let page = 0; const size = 20; const message = document.getElementById('adminMensaje');
+    let page = 0; let subscriptionEditable = false; const size = 20; const message = document.getElementById('adminMensaje');
+    const subscriptionFields = document.getElementById('subscriptionFields');
+    const localDate = value => value ? value.slice(0, 16) : '';
     function clearEditor() {
         adminForm.reset(); document.getElementById('usuario_id').value = ''; document.getElementById('formTitle').textContent = 'Crear usuario';
         document.getElementById('passwordField').hidden = false; adminForm.elements.contrasena.required = true;
+        subscriptionFields.hidden = true; subscriptionEditable = false;
         document.getElementById('accountEditorMensaje').textContent = '';
     }
     async function loadUsers() {
@@ -66,13 +69,32 @@ if (adminForm) {
             for (const value of [user.nombre + ' ' + user.apellidos, user.email, user.rol, user.activo ? 'Activa' : 'Inactiva']) {
                 const cell = document.createElement('td'); cell.textContent = value; row.append(cell);
             }
-            const actions = document.createElement('td'); const edit = document.createElement('button'); edit.type = 'button'; edit.textContent = 'Editar';
-            edit.onclick = () => {
+            const actions = document.createElement('td'); const edit = document.createElement('button'); edit.type = 'button';
+            edit.textContent = 'Editar';
+            edit.onclick = async () => {
                 clearEditor();
                 for (const key of accountFields) adminForm.elements[key].value = user[key] || '';
                 adminForm.elements.rol.value = user.rol; document.getElementById('activo').checked = user.activo; document.getElementById('usuario_id').value = user.id;
                 document.getElementById('formTitle').textContent = 'Editar usuario'; document.getElementById('passwordField').hidden = true;
                 adminForm.elements.contrasena.required = false; adminForm.elements.contrasena.value = ''; editor.showModal();
+                if (user.rol === 'vendedor') {
+                    subscriptionFields.hidden = false;
+                    document.getElementById('subscriptionStore').textContent = 'Cargando suscripción…';
+                    try {
+                        const subscription = await accountRequest('/admin/usuarios/' + user.id + '/suscripcion');
+                        const store = subscription.tienda;
+                        subscriptionEditable = Boolean(store);
+                        document.getElementById('subscriptionStore').textContent = store ? 'Tienda: ' + store.nombre + ' · Plan efectivo: ' + store.plan_efectivo : 'Este vendedor todavía no tiene una tienda.';
+                        for (const control of subscriptionFields.querySelectorAll('input, select')) control.disabled = !store;
+                        if (store) {
+                            document.getElementById('subscriptionPlan').value = store.plan;
+                            document.getElementById('subscriptionActive').checked = store.suscripcion_activa;
+                            document.getElementById('subscriptionGateway').checked = store.pasarela_activa;
+                            document.getElementById('subscriptionStart').value = localDate(store.fecha_alta_plan);
+                            document.getElementById('subscriptionRenewal').value = localDate(store.fecha_renovacion_plan);
+                        }
+                    } catch (error) { document.getElementById('subscriptionStore').textContent = error.message; }
+                }
             };
             const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Eliminar';
             remove.onclick = async () => {
@@ -97,6 +119,15 @@ if (adminForm) {
         body.activo = document.getElementById('activo').checked;
         if (!id) body.contrasena = form.elements.contrasena.value;
         await accountRequest('/admin/usuarios/' + id, id ? 'PUT' : 'POST', body);
+        if (id && body.rol === 'vendedor' && subscriptionEditable) {
+            await accountRequest('/admin/usuarios/' + id + '/suscripcion', 'PUT', {
+                plan: document.getElementById('subscriptionPlan').value,
+                suscripcion_activa: document.getElementById('subscriptionActive').checked,
+                pasarela_activa: document.getElementById('subscriptionGateway').checked,
+                fecha_alta_plan: document.getElementById('subscriptionStart').value || null,
+                fecha_renovacion_plan: document.getElementById('subscriptionRenewal').value || null,
+            });
+        }
         editor.close();
         try { await loadUsers(); message.textContent = 'Usuario guardado'; }
         catch (error) { message.textContent = 'Usuario guardado. ' + error.message; }

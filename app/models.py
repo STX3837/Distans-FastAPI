@@ -122,6 +122,11 @@ class Tienda(Base):
     ubicacion = Column(String, nullable=True)
     direccion = Column(String, nullable=True)
     horario = Column(String, nullable=True)
+    plan = Column(String(8), nullable=False, default="Premium", server_default="Premium")
+    suscripcion_activa = Column(Boolean, nullable=False, default=True, server_default="true")
+    fecha_alta_plan = Column(DateTime, nullable=False, default=datetime.utcnow)
+    fecha_renovacion_plan = Column(DateTime, nullable=True)
+    pasarela_activa = Column(Boolean, nullable=False, default=True, server_default="true")
     imagen = Column(String, nullable=True)
     valoracion_media = Column(Float, nullable=True)
     
@@ -137,9 +142,33 @@ class Tienda(Base):
     productos = relationship("Producto", back_populates="tienda", cascade="all, delete-orphan")
     coordenadas = relationship("CoordenadasTienda", back_populates="tienda", uselist=False, cascade="all, delete-orphan")
     @property
+    def plan_efectivo(self):
+        return "Premium" if (self.plan == "Premium" and self.suscripcion_activa and
+                             (self.fecha_renovacion_plan is None or self.fecha_renovacion_plan > datetime.utcnow())) else "Freemium"
+
+    @property
+    def compra_online(self):
+        return self.plan_efectivo == "Premium" and self.pasarela_activa
+    @property
     def categorias(self):
         """Categorías únicas de todos los productos de la tienda."""
         return sorted({producto.categoria for producto in self.productos}, key=lambda categoria: categoria.value)
+
+
+class PagoPlan(Base):
+    """Intento de pago de una mensualidad Premium; cada cobro se aplica una vez."""
+    __tablename__ = "pagos_plan"
+
+    id = Column(Integer, primary_key=True)
+    tienda_id = Column(Integer, ForeignKey("tiendas.id", ondelete="CASCADE"), nullable=False, index=True)
+    vendedor_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    importe_centimos = Column(Integer, nullable=False, default=1499)
+    moneda = Column(String(3), nullable=False, default="eur")
+    estado = Column(String(12), nullable=False, default="pendiente")
+    stripe_session_id = Column(String, unique=True, nullable=True)
+    fecha_creacion = Column(DateTime, nullable=False, default=datetime.utcnow)
+    fecha_pago = Column(DateTime, nullable=True)
+    fecha_fin = Column(DateTime, nullable=True)
 
 
 class CoordenadasTienda(Base):

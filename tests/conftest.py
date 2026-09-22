@@ -12,7 +12,7 @@ from app import crud
 from app.database import get_db
 from app.models import Base, Usuario, RestablecimientoContrasena
 from app.password_reset import router as password_reset_router
-from app.routers import auth, users, catalogo, gestion, admin_pedidos, favoritos, pedidos
+from app.routers import auth, users, catalogo, gestion, admin_pedidos, favoritos, pedidos, planes
 from app.schemas import RolUsuario as RolUsuarioSchema
 from app.schemas import UsuarioCreate
 
@@ -48,6 +48,7 @@ def app(db_session: Session) -> FastAPI:
     test_app.include_router(catalogo.router)
     test_app.include_router(favoritos.router)
     test_app.include_router(gestion.router)
+    test_app.include_router(planes.router)
     test_app.include_router(admin_pedidos.router)
     test_app.include_router(pedidos.router)
     test_app.include_router(auth.router)
@@ -119,7 +120,7 @@ def stripe_gateway(monkeypatch):
         if key in sessions:
             return sessions[key]
         result = dict(id='cs_test_' + str(len(creations)), url='https://checkout.stripe.com/c/pay/test',
-            status='open', payment_status='unpaid', currency='eur',
+            status='open', payment_status='unpaid', currency='eur', mode=params['mode'],
             amount_total=sum(line['price_data']['unit_amount'] * line['quantity'] for line in params['line_items']),
             metadata=params['metadata'], client_reference_id=params['client_reference_id'], expires_at=params['expires_at'])
         sessions[key] = result

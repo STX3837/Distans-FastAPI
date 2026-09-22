@@ -1,5 +1,6 @@
+from datetime import datetime, timedelta
 import pytest
-from app.models import Categoria, RolUsuario, Pedido, ProductoPedido, MetodoPago, Producto, Subpedido
+from app.models import Categoria, RolUsuario, Pedido, ProductoPedido, MetodoPago, Producto, Subpedido, Tienda
 
 
 def login(client, user):
@@ -42,6 +43,40 @@ def test_admin_navigation_and_account_filters(client, admin_data):
     assert 'contrasena_hash' not in str(accounts)
     assert client.get('/admin/usuarios/', params={'skip': -1}).status_code == 422
     assert 'data-delete-store' in client.get('/admin/tiendas').text
+
+
+def test_admin_edits_seller_subscription_from_account_editor(client, admin_data, db_session):
+    admin, seller, buyer, shop, product, headers = admin_data
+    panel = client.get('/admin/usuarios/panel').text
+    assert 'id="subscriptionFields"' in panel
+    current = client.get(f'/admin/usuarios/{seller.id}/suscripcion')
+    assert current.status_code == 200
+    assert current.json()['tienda']['id'] == shop['id']
+    renewal = (datetime.utcnow() + timedelta(days=31)).replace(microsecond=0)
+    changed = client.put(f'/admin/usuarios/{seller.id}/suscripcion', json={
+        'plan': 'Premium', 'suscripcion_activa': True, 'pasarela_activa': True,
+        'fecha_alta_plan': datetime.utcnow().replace(microsecond=0).isoformat(),
+        'fecha_renovacion_plan': renewal.isoformat(),
+    }, headers=headers)
+    assert changed.status_code == 200
+    assert changed.json()['tienda']['plan_efectivo'] == 'Premium'
+    db_session.expire_all()
+    store = db_session.get(Tienda, shop['id'])
+    assert store.plan == 'Premium'
+    assert store.suscripcion_activa is True
+    assert store.pasarela_activa is True
+    assert store.fecha_renovacion_plan == renewal
+    freemium = client.put(f'/admin/usuarios/{seller.id}/suscripcion', json={
+        'plan': 'Freemium', 'suscripcion_activa': True, 'pasarela_activa': True,
+        'fecha_alta_plan': None, 'fecha_renovacion_plan': renewal.isoformat(),
+    }, headers=headers)
+    assert freemium.status_code == 200
+    db_session.expire_all()
+    store = db_session.get(Tienda, shop['id'])
+    assert store.plan_efectivo == 'Freemium'
+    assert store.suscripcion_activa is False
+    assert store.pasarela_activa is False
+    assert store.fecha_renovacion_plan is None
 
 
 def payload(buyer, product, code='ADMIN-001'):

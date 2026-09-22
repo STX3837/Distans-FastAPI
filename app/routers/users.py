@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Literal
+from datetime import datetime
+from pydantic import BaseModel
 import hashlib
 import secrets
 from fastapi.responses import HTMLResponse, RedirectResponse
 from app.routers.auth import templates, _validar_csrf
-from app.models import Usuario, RolUsuario
+from app.models import Usuario, RolUsuario, Tienda
 from app.schemas import (
     UsuarioAdminCreate,
     DatosCompradorPago,
@@ -37,6 +39,23 @@ admin_router = APIRouter(
     prefix="/admin/usuarios",
     tags=["administrador"],
 )
+
+
+class SuscripcionAdminUpdate(BaseModel):
+    plan: Literal["Freemium", "Premium"]
+    suscripcion_activa: bool
+    fecha_alta_plan: datetime | None = None
+    fecha_renovacion_plan: datetime | None = None
+    pasarela_activa: bool
+
+
+def datos_suscripcion(usuario, tienda):
+    return {"es_vendedor": usuario.rol == RolUsuario.VENDEDOR, "tienda": None if tienda is None else {
+        "id": tienda.id, "nombre": tienda.nombre, "plan": tienda.plan,
+        "plan_efectivo": tienda.plan_efectivo, "suscripcion_activa": tienda.suscripcion_activa,
+        "fecha_alta_plan": tienda.fecha_alta_plan, "fecha_renovacion_plan": tienda.fecha_renovacion_plan,
+        "pasarela_activa": tienda.pasarela_activa,
+    }}
 
 
 def _obtener_usuario_actual(request: Request, db: Session) -> Usuario:
@@ -263,6 +282,43 @@ def actualizar_usuario_admin_endpoint(
     _validar_csrf(request)
     usuario_actualizado = actualizar_usuario_admin(db, usuario_id, datos)
     return usuario_actualizado
+
+
+@admin_router.get("/{usuario_id}/suscripcion")
+def obtener_suscripcion_vendedor(usuario_id: int, request: Request, db: Session = Depends(get_db)):
+    _obtener_admin_actual(request, db)
+    usuario = obtener_usuario_por_id(db, usuario_id)
+    if usuario is None:
+        raise HTTPException(404, "Usuario no encontrado")
+    tienda = db.query(Tienda).filter_by(vendedor_id=usuario.id).first() if usuario.rol == RolUsuario.VENDEDOR else None
+    return datos_suscripcion(usuario, tienda)
+
+
+@admin_router.put("/{usuario_id}/suscripcion")
+def actualizar_suscripcion_vendedor(usuario_id: int, datos: SuscripcionAdminUpdate,
+                                     request: Request, db: Session = Depends(get_db)):
+    _obtener_admin_actual(request, db)
+    _validar_csrf(request)
+    usuario = obtener_usuario_por_id(db, usuario_id)
+    if usuario is None:
+        raise HTTPException(404, "Usuario no encontrado")
+    if usuario.rol != RolUsuario.VENDEDOR:
+        raise HTTPException(409, "Solo los vendedores tienen una suscripción de tienda")
+    tienda = db.query(Tienda).filter_by(vendedor_id=usuario.id).with_for_update().first()
+    if tienda is None:
+        raise HTTPException(409, "El vendedor todavía no tiene una tienda")
+    tienda.plan = datos.plan
+    tienda.suscripcion_activa = datos.suscripcion_activa
+    tienda.fecha_alta_plan = datos.fecha_alta_plan or tienda.fecha_alta_plan or datetime.utcnow()
+    tienda.fecha_renovacion_plan = datos.fecha_renovacion_plan
+    tienda.pasarela_activa = datos.pasarela_activa
+    if datos.plan == "Freemium":
+        tienda.suscripcion_activa = False
+        tienda.pasarela_activa = False
+        tienda.fecha_renovacion_plan = None
+    tienda.fecha_actualizacion = datetime.utcnow()
+    db.commit()
+    return datos_suscripcion(usuario, tienda)
 
 
 @admin_router.delete("/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)
