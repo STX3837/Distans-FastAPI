@@ -84,6 +84,9 @@ def test_rf06_rf22_filters_and_validation(client, catalog, db_session, user_fact
     html = client.get("/inicio").text
     assert 'id="filterRating" name="valoracion_min" type="range"' in html
     assert 'id="filterStoreRating" name="tienda_valoracion_min" type="range"' in html
+    assert '>Filtros</button>' in html
+    assert 'data-filters-panel hidden' in html
+    assert 'name="tienda_id"' not in html
 
     shops = client.get("/api/tiendas", params={"categoria": Categoria.HOGAR_BRICOLAJE.value,
                                               "valoracion_min": 4}).json()
