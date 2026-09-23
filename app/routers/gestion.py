@@ -12,7 +12,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models import Categoria, CoordenadasTienda, Pedido, Producto, ProductoPedido, RolUsuario, Tienda, Usuario, VisitaProducto, VisitaTienda
+from app.models import Categoria, ComentarioProducto, CoordenadasTienda, Pedido, Producto, ProductoPedido, RolUsuario, Tienda, Usuario, VisitaProducto, VisitaTienda
 from app.routers.auth import _validar_csrf
 from app.routers.users import _obtener_usuario_actual
 from app.routers.catalogo import pagina_publica, producto_publico
@@ -288,6 +288,64 @@ class StockProductoDatos(StockDatos):
 
 class StocksDatos(BaseModel):
     productos: list[StockProductoDatos] = Field(min_length=1, max_length=100)
+
+
+class ComentarioGestionDatos(BaseModel):
+    texto: str = Field(min_length=1, max_length=1000)
+
+    @field_validator("texto")
+    @classmethod
+    def texto_no_vacio(cls, value):
+        if not value.strip():
+            raise ValueError("El comentario no puede estar vacío")
+        return value.strip()
+
+
+def comentario_gestion(db, producto_id, usuario_id):
+    comentario = db.get(ComentarioProducto, (usuario_id, producto_id))
+    if comentario is None:
+        raise HTTPException(404, "Comentario no encontrado")
+    return comentario
+
+
+@router.get("/api/gestion/productos/{producto_id}/comentarios")
+def comentarios_producto_gestion(producto_id: int, request: Request, db: Session = Depends(get_db)):
+    usuario = gestor(request, db)
+    producto = producto_permitido(db, usuario, producto_id)
+    comentarios = (db.query(ComentarioProducto).filter_by(producto_id=producto.id)
+                   .order_by(ComentarioProducto.fecha_actualizacion.desc()).all())
+    return {"producto": {"id": producto.id, "nombre": producto.nombre},
+            "puede_editar": usuario.rol == RolUsuario.ADMIN,
+            "comentarios": [{"usuario_id": item.usuario_id,
+                              "autor": (item.autor.nombre + " " + item.autor.apellidos).strip(),
+                              "email": item.autor.email, "texto": item.texto,
+                              "fecha_actualizacion": item.fecha_actualizacion} for item in comentarios]}
+
+
+@router.put("/api/gestion/productos/{producto_id}/comentarios/{usuario_id}")
+def editar_comentario_producto_gestion(producto_id: int, usuario_id: int, datos: ComentarioGestionDatos,
+                                       request: Request, db: Session = Depends(get_db)):
+    usuario = gestor(request, db)
+    if usuario.rol != RolUsuario.ADMIN:
+        raise HTTPException(403, "Solo administración puede editar comentarios ajenos")
+    _validar_csrf(request)
+    producto_permitido(db, usuario, producto_id)
+    comentario = comentario_gestion(db, producto_id, usuario_id)
+    comentario.texto = datos.texto
+    comentario.fecha_actualizacion = datetime.utcnow()
+    db.commit()
+    return {"mensaje": "Comentario actualizado"}
+
+
+@router.delete("/api/gestion/productos/{producto_id}/comentarios/{usuario_id}")
+def eliminar_comentario_producto_gestion(producto_id: int, usuario_id: int, request: Request,
+                                         db: Session = Depends(get_db)):
+    usuario = gestor(request, db)
+    _validar_csrf(request)
+    producto_permitido(db, usuario, producto_id)
+    db.delete(comentario_gestion(db, producto_id, usuario_id))
+    db.commit()
+    return {"mensaje": "Comentario eliminado"}
 
 
 @router.patch("/api/gestion/tiendas/{tienda_id}/stock")

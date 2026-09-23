@@ -146,12 +146,16 @@ def test_admin_edits_delivery_details_on_paid_order(client, admin_data, db_sessi
     assert listed['puede_editar'] is False
     assert listed['puede_editar_datos'] is True
     response = client.patch(f'/admin/pedidos/{order_id}/datos', json={
+        'nombre_comprador': 'Nombre editado',
+        'apellidos_comprador': 'Apellidos editados',
+        'email_comprador': 'pedido-editado@example.com',
         'direccion_envio': 'Nueva dirección 12',
         'direccion_facturacion': 'Factura 34',
         'telefono': '+34600000000',
     }, headers=headers)
     assert response.status_code == 200
     assert response.json()['direccion_envio'] == 'Nueva dirección 12'
+    assert response.json()['email_comprador'] == 'pedido-editado@example.com'
     assert db_session.get(Pedido, order_id).telefono == '+34600000000'
     assert '<dialog id="pedidoEditor"' in client.get('/admin/pedidos/panel').text
 

@@ -6,6 +6,7 @@
     <title>{% block title %}Distans{% endblock %}</title>
     <link rel="stylesheet" href="/static/auth.css">
     <link rel="stylesheet" href="/static/cesta.css?v=1">
+    <link rel="stylesheet" href="/static/responsive.css?v=1">
     {% block styles %}{% endblock %}
 <link rel="icon" type="image/png" href="/static/logo.png">
 </head>
@@ -61,7 +62,7 @@
     <script src="/static/cesta.js?v=1"></script>
     {% endif %}
 
-    <script src="/static/auth.js"></script>
+    <script src="/static/auth.js?v=api-errors-2"></script>
     {% if es_comprador %}<script src="/static/favoritos.js?v=1"></script>{% endif %}
     {% block scripts %}{% endblock %}
 </body>

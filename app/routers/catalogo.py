@@ -304,9 +304,9 @@ def inicio(request: Request, q: str = Query("", max_length=120), categoria: Cate
     datos = buscar(db, q, categoria, destacados, pagina, geo, tienda_id,
                    precio_min, precio_max, valoracion_min, modalidad, tienda_valoracion_min, tipo_catalogo)
     def pagina_url(numero):
-        params = {"pagina": numero}
-        if request.query_params.get("tab") in {"mapa", "productos", "tiendas"}:
-            params["tab"] = request.query_params["tab"]
+        # La paginación pertenece al panel de productos. Se fija la pestaña porque
+        # sus enlaces se renderizan antes de que JavaScript cambie la URL al pulsarla.
+        params = {"pagina": numero, "tab": "productos"}
         if es_busqueda: params["q"] = q
         if q: params["q"] = q
         if categoria: params["categoria"] = categoria.value

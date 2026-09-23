@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ producto.nombre }} - Distans{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"><link rel="stylesheet" href="/static/catalogo.css?v=moderate-comments-1">{% if es_vendedor or es_admin %}<link rel="stylesheet" href="/static/gestion.css?v=product-grid-1">{% endif %}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"><link rel="stylesheet" href="/static/catalogo.css?v=all-card-images-5">{% if es_vendedor or es_admin %}<link rel="stylesheet" href="/static/gestion.css?v=all-card-images-1">{% endif %}{% endblock %}
 {% block content %}
 <main class="catalog-page">{% if not es_vendedor and not es_admin %}<a href="/inicio?q=">Volver al catálogo</a> · <a href="/carrito">Ver carrito</a>{% endif %}
 <article class="product-detail">

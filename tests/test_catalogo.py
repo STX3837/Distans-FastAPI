@@ -152,6 +152,8 @@ def test_pagination_consistent_with_map_data(client, catalog, db_session):
     assert len(first["productos"]) == 24 and len(second["productos"]) == 7
     assert not set(p["id"] for p in first["productos"]) & set(p["id"] for p in second["productos"])
     assert client.get("/api/productos", params={"pagina": 0}).status_code == 422
+    page = client.get("/inicio")
+    assert "pagina=2&amp;tab=productos" in page.text
 
 
 def test_unsafe_images_and_names_are_escaped(client, catalog, db_session):

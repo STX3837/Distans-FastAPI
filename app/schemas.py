@@ -44,13 +44,13 @@ class MetodoPago(str, Enum):
 
 class UsuarioBase(BaseModel):
     """Campos básicos de usuario"""
-    nombre: str = Field(min_length=1)
-    apellidos: str = Field(min_length=1)
+    nombre: str = Field(min_length=1, max_length=100)
+    apellidos: str = Field(min_length=1, max_length=150)
     email: EmailStr
-    telefono: Optional[str] = None
-    direccion: Optional[str] = None
-    ciudad: Optional[str] = None
-    codigo_postal: Optional[str] = None
+    telefono: Optional[str] = Field(default=None, max_length=30, pattern=r"^[+0-9 ()-]*$")
+    direccion: Optional[str] = Field(default=None, max_length=250)
+    ciudad: Optional[str] = Field(default=None, max_length=100)
+    codigo_postal: Optional[str] = Field(default=None, max_length=20, pattern=r"^[A-Za-z0-9 -]*$")
 
     @field_validator("nombre", "apellidos", "email", mode="before")
     @classmethod
@@ -97,13 +97,13 @@ class UsuarioAdminCreate(UsuarioCreate):
 
 class UsuarioUpdate(BaseModel):
     """Schema para actualizar datos del usuario - RF28"""
-    nombre: Optional[str] = None
-    apellidos: Optional[str] = None
+    nombre: Optional[str] = Field(default=None, max_length=100)
+    apellidos: Optional[str] = Field(default=None, max_length=150)
     email: Optional[EmailStr] = None
-    telefono: Optional[str] = None
-    direccion: Optional[str] = None
-    ciudad: Optional[str] = None
-    codigo_postal: Optional[str] = None
+    telefono: Optional[str] = Field(default=None, max_length=30, pattern=r"^[+0-9 ()-]*$")
+    direccion: Optional[str] = Field(default=None, max_length=250)
+    ciudad: Optional[str] = Field(default=None, max_length=100)
+    codigo_postal: Optional[str] = Field(default=None, max_length=20, pattern=r"^[A-Za-z0-9 -]*$")
 
     @field_validator("nombre", "apellidos", "email", mode="before")
     @classmethod
@@ -115,7 +115,7 @@ class UsuarioUpdate(BaseModel):
 
 class UsuarioCambiarContrasena(BaseModel):
     """Schema para cambiar contraseña"""
-    contrasena_actual: str
+    contrasena_actual: str = Field(min_length=1, max_length=128)
     contrasena_nueva: str = Field(min_length=8, max_length=128)
 
 
@@ -133,13 +133,13 @@ class UsuarioResponse(UsuarioBase):
 
 class UsuarioAdminUpdate(BaseModel):
     """Schema para actualizar usuario como administrador - RF32"""
-    nombre: Optional[str] = None
-    apellidos: Optional[str] = None
+    nombre: Optional[str] = Field(default=None, max_length=100)
+    apellidos: Optional[str] = Field(default=None, max_length=150)
     email: Optional[EmailStr] = None
-    telefono: Optional[str] = None
-    direccion: Optional[str] = None
-    ciudad: Optional[str] = None
-    codigo_postal: Optional[str] = None
+    telefono: Optional[str] = Field(default=None, max_length=30, pattern=r"^[+0-9 ()-]*$")
+    direccion: Optional[str] = Field(default=None, max_length=250)
+    ciudad: Optional[str] = Field(default=None, max_length=100)
+    codigo_postal: Optional[str] = Field(default=None, max_length=20, pattern=r"^[A-Za-z0-9 -]*$")
     rol: Optional[RolUsuario] = None
     activo: Optional[bool] = None
 

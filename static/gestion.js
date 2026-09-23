@@ -133,6 +133,42 @@
             } catch (error) {editor.querySelector('[data-product-status]').textContent = error.message;} finally {button.disabled = false;}
         });
     }
+    const commentsDialog = document.getElementById('productCommentsDialog');
+    if (commentsDialog) {
+        const list = commentsDialog.querySelector('[data-comments-list]');
+        const feedback = commentsDialog.querySelector('[data-comments-feedback]');
+        let activeProductId = null;
+        async function loadComments(productId) {
+            activeProductId = productId; feedback.textContent = 'Cargando comentarios…'; list.replaceChildren();
+            const data = await mutate('/api/gestion/productos/' + productId + '/comentarios', 'GET');
+            document.getElementById('productCommentsTitle').textContent = 'Comentarios · ' + data.producto.nombre;
+            feedback.textContent = data.comentarios.length ? '' : 'Este producto todavía no tiene comentarios.';
+            for (const comment of data.comentarios) {
+                const article = document.createElement('article'); article.className = 'management-comment';
+                const heading = document.createElement('div'); heading.className = 'management-comment-heading';
+                const author = document.createElement('strong'); author.textContent = comment.autor || comment.email;
+                const date = document.createElement('time'); date.textContent = new Date(comment.fecha_actualizacion + 'Z').toLocaleString('es-ES');
+                heading.append(author, date);
+                const text = document.createElement(data.puede_editar ? 'textarea' : 'p');
+                text.textContent = comment.texto;
+                if (data.puede_editar) { text.maxLength = 1000; text.required = true; }
+                const actions = document.createElement('div'); actions.className = 'management-actions';
+                if (data.puede_editar) {
+                    const save = document.createElement('button'); save.type = 'button'; save.className = 'add-cart'; save.textContent = 'Guardar edición';
+                    save.onclick = async () => { try { await mutate('/api/gestion/productos/' + productId + '/comentarios/' + comment.usuario_id, 'PUT', {texto: text.value}); feedback.textContent = 'Comentario actualizado'; } catch (error) { feedback.textContent = error.message; } };
+                    actions.append(save);
+                }
+                const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'danger-button'; remove.textContent = 'Eliminar';
+                remove.onclick = async () => { if (!confirm('¿Eliminar este comentario?')) return; try { await mutate('/api/gestion/productos/' + productId + '/comentarios/' + comment.usuario_id, 'DELETE'); await loadComments(productId); } catch (error) { feedback.textContent = error.message; } };
+                actions.append(remove); article.append(heading, text, actions); list.append(article);
+            }
+        }
+        document.querySelectorAll('[data-product-comments]').forEach(button => button.addEventListener('click', async () => {
+            commentsDialog.showModal();
+            try { await loadComments(button.dataset.productComments); } catch (error) { feedback.textContent = error.message; }
+        }));
+        commentsDialog.querySelectorAll('[data-close-comments]').forEach(button => button.addEventListener('click', () => commentsDialog.close()));
+    }
     document.querySelectorAll('[data-delete-store], [data-delete-product]').forEach(button => button.addEventListener('click', async () => {
         const store = button.dataset.deleteStore;
         if (!confirm(store ? '¿Eliminar esta tienda y todos sus productos?' : '¿Eliminar este producto?')) return;

@@ -1,174 +1,245 @@
+﻿# Distans
 
-# Distans-FastAPI ⚡🌍
+Plataforma web para digitalizar el comercio local y acercar sus productos a clientes de la zona.
 
+Distans es una aplicaciÃ³n desarrollada como Trabajo de Fin de Grado. El proyecto aborda el ciclo completo de un marketplace de proximidad: descubrimiento geogrÃ¡fico de comercios, publicaciÃ³n de catÃ¡logos, compra, seguimiento de pedidos y gestiÃ³n diferenciada para clientes, vendedores y administradores.
 
-Este es un proyecto base para la creación de APIs de alto rendimiento utilizando FastAPI, SQLAlchemy (con GeoAlchemy2) y PostgreSQL + PostGIS, completamente dockerizado para un entorno de desarrollo aislado.
+## PropÃ³sito del proyecto
 
-## Índice
-- [Requisitos Previos](#requisitos-previos)
-- [Instalación y Despliegue Local](#instalación-y-despliegue-local)
-- [Configuración](#configuración)
-- [Acceso a la API](#acceso-a-la-api)
-- [Comandos Útiles](#comandos-útiles)
-- [Recarga automática (Hot Reload)](#recarga-automática-hot-reload)
+Los pequeÃ±os comercios suelen disponer de menos recursos para ofrecer visibilidad y venta digital. Distans propone un punto de encuentro donde cada establecimiento mantiene su propio catÃ¡logo y el usuario puede encontrar productos disponibles cerca de su ubicaciÃ³n.
 
-## 📋 Requisitos Previos
-Para poder ejecutar este proyecto en tu máquina local, necesitas tener instalado:
+Los objetivos principales son:
 
-- Git
-- Docker (y Docker Compose, incluido en Docker Desktop)
+- facilitar la presencia digital de comercios locales;
+- permitir la bÃºsqueda de tiendas y productos por proximidad;
+- ofrecer un proceso de compra completo y consistente;
+- separar con claridad los permisos de compradores, vendedores y administradores;
+- proporcionar una aplicaciÃ³n accesible desde ordenador, tableta y mÃ³vil;
+- aplicar validaciÃ³n, autenticaciÃ³n y autorizaciÃ³n en el servidor.
 
-## 🚀 Instalación y Despliegue Local
-Sigue estos pasos para levantar el entorno de desarrollo desde cero.
+## Funcionalidades principales
 
-### 1. Clonar el repositorio
-Abre tu terminal y ejecuta:
+### Clientes e invitados
+
+- ExploraciÃ³n de productos y tiendas mediante listado o mapa.
+- BÃºsqueda por texto, categorÃ­a, precio, modalidad, valoraciÃ³n y radio geogrÃ¡fico.
+- Fichas detalladas de tiendas y productos.
+- Carrito persistente y compra directa.
+- Pago mediante Stripe Checkout o contrarrembolso.
+- Historial y seguimiento de pedidos.
+- Favoritos, valoraciones y comentarios para compradores registrados.
+
+### Vendedores
+
+- Una tienda por cuenta de vendedor.
+- EdiciÃ³n de datos comerciales, localizaciÃ³n y horario.
+- Alta, modificaciÃ³n y retirada de productos.
+- Control de disponibilidad y stock.
+- GestiÃ³n exclusiva de los pedidos correspondientes a su tienda.
+- EstadÃ­sticas de visitas y actividad.
+- Planes Freemium y Premium.
+
+### AdministraciÃ³n
+
+- GestiÃ³n de usuarios, roles y estado de las cuentas.
+- SupervisiÃ³n de tiendas, productos, suscripciones y pedidos.
+- ModeraciÃ³n de comentarios.
+- Acceso global reservado al rol administrador.
+
+## Arquitectura y tecnologÃ­as
+
+La aplicaciÃ³n sigue una arquitectura web renderizada en servidor con una API HTTP integrada.
+
+```text
+Navegador
+   |
+   | HTTP / sesiones firmadas / CSRF
+   v
+FastAPI + Jinja2
+   |
+   | SQLAlchemy / GeoAlchemy2
+   v
+PostgreSQL + PostGIS
+
+Servicios auxiliares: Stripe Checkout y servidor SMTP
+```
+
+| Capa | TecnologÃ­a |
+|---|---|
+| Backend | Python 3.11, FastAPI y Pydantic 2 |
+| Persistencia | SQLAlchemy 2, PostgreSQL 15 y PostGIS |
+| Interfaz | Jinja2, HTML, CSS y JavaScript |
+| CartografÃ­a | Leaflet y PostGIS |
+| Pagos | Stripe Checkout y webhooks |
+| Correo de desarrollo | Mailpit |
+| Infraestructura | Docker y Docker Compose |
+| Calidad | Pytest y SQLite en memoria |
+
+## Puesta en marcha
+
+### Requisitos
+
+- Git.
+- Docker Desktop o Docker Engine con Docker Compose.
+
+### InstalaciÃ³n
 
 ```bash
 git clone https://github.com/STX3837/Distans-FastAPI.git
 cd Distans-FastAPI
+cp .env.example .env
+docker compose up -d --build
 ```
 
-También puedes clonar usando el enlace: https://github.com/STX3837/Distans-FastAPI.git
+En PowerShell, utiliza `Copy-Item .env.example .env` en lugar de `cp`.
 
-### 2. Configurar las variables de entorno
-Por seguridad, las credenciales de la base de datos no se suben al repositorio. Debes crear un archivo llamado `.env` en la raíz del proyecto (al mismo nivel que `docker-compose.yml`) con el siguiente contenido:
+Antes de levantar un entorno pÃºblico deben sustituirse las credenciales de PostgreSQL y `SESSION_SECRET_KEY` de `.env`. El valor de sesiÃ³n debe ser largo, aleatorio y privado.
 
-```env
-DB_NAME=mi_base_datos
-DB_USER=mi_usuario
-DB_PASSWORD=una_contraseña_segura
-SESSION_SECRET_KEY=una_clave_aleatoria_larga_y_privada
-```
+Una vez iniciados los contenedores:
 
-### 3. Construir y levantar los contenedores
-Con Docker ejecutándose en tu máquina, construye y levanta los servicios en segundo plano:
+- AplicaciÃ³n: <http://localhost:8001>
+- DocumentaciÃ³n OpenAPI: <http://localhost:8001/docs>
+- DocumentaciÃ³n alternativa: <http://localhost:8001/redoc>
+- Bandeja de correo de desarrollo: <http://localhost:8025>
+
+## Entorno de demostraciÃ³n
+
+El proyecto incluye un generador autosuficiente de datos de prueba. Puede ejecutarse inmediatamente despuÃ©s de levantar una base vacÃ­a y no necesita cuentas creadas previamente.
 
 ```bash
-docker-compose up -d --build
+docker compose exec web python -m scripts.seed_catalogo
 ```
 
-> Nota: La primera vez que ejecutes este comando, Docker descargará imágenes y instalará dependencias; puede tardar varios minutos.
+El comando es aditivo e idempotente: puede ejecutarse varias veces sin eliminar ni duplicar los datos ya creados. En concreto:
 
-## 💻 Acceso a la API
-Una vez que los contenedores estén corriendo, accede a través de tu navegador:
+- conserva todas las cuentas y todos los datos existentes;
+- crea un administrador, un comprador y diez vendedores;
+- asigna exactamente una tienda a cada vendedor;
+- crea diez comercios geolocalizados en Carmona y Sevilla y treinta productos variados;
+- incorpora imÃ¡genes de muestra, ofertas, stock, favoritos, valoraciones y comentarios;
+- aÃ±ade un pedido entregado para probar los historiales y paneles;
+- crea exclusivamente los elementos de demostraciÃ³n que todavÃ­a falten.
 
-- **Pantalla de acceso:** [http://localhost:8001/](http://localhost:8001/)
-- **Página de inicio con productos:** [http://localhost:8001/inicio](http://localhost:8001/inicio)
-- **Registro:** [http://localhost:8001/registro](http://localhost:8001/registro)
-- **Inicio de sesión:** [http://localhost:8001/login](http://localhost:8001/login)
-- **Mi cuenta:** [http://localhost:8001/usuarios/cuenta](http://localhost:8001/usuarios/cuenta) (requiere iniciar sesión)
-- **Administración:** [http://localhost:8001/admin/usuarios/panel](http://localhost:8001/admin/usuarios/panel) (requiere una cuenta administradora)
-- **Recuperar contraseña:** [http://localhost:8001/recuperar-contrasena](http://localhost:8001/recuperar-contrasena)
-- Documentación Interactiva (Swagger UI): http://localhost:8001/docs
-- Documentación Alternativa (ReDoc): http://localhost:8001/redoc
+El antiguo argumento `--reset` se conserva temporalmente por compatibilidad, pero ya no elimina informaciÃ³n. El script estÃ¡ destinado a desarrollo y evaluaciÃ³n.
 
-(Nota: la API está expuesta en el puerto `8001` en este README para evitar conflictos con otros servicios web que puedan estar corriendo en el puerto `8000`. Asegúrate de que el mapeo en `docker-compose.yml` coincida con el puerto que uses.)
+### Credenciales de prueba
 
-## 🛠️ Comandos Útiles de Docker y FastAPI
-Aquí tienes una lista de comandos de referencia rápida para gestionar tu entorno desde la terminal:
+Todas las cuentas siguientes utilizan la contraseÃ±a `DistansDemo2026!`:
 
-Ver los logs (registros) de la API en tiempo real:
+| Perfil | Correo | Contenido asociado |
+|---|---|---|
+| Administrador | `demo.admin@distans-demo.com` | Panel global |
+| Comprador | `demo.comprador@distans-demo.com` | Favoritos, reseÃ±as y pedido de muestra |
+| Vendedor 1 | `demo.vendedor1@distans-demo.com` | Comercio Carmona |
+| Vendedor 2 | `demo.vendedor2@distans-demo.com` | ArtesanÃ­a AlcÃ¡zar |
+| Vendedor 3 | `demo.vendedor3@distans-demo.com` | Tecno CampiÃ±a |
+| Vendedor 4 | `demo.vendedor4@distans-demo.com` | Verde Alcores |
+| Vendedor 5 | `demo.vendedor5@distans-demo.com` | LibrerÃ­a Puerta Sevilla |
+| Vendedor 6 | `demo.vendedor6@distans-demo.com` | Sabores de Triana (Sevilla) |
+| Vendedor 7 | `demo.vendedor7@distans-demo.com` | Bienestar NerviÃ³n (Sevilla) |
+| Vendedor 8 | `demo.vendedor8@distans-demo.com` | Flores de la Macarena (Sevilla) |
+| Vendedor 9 | `demo.vendedor9@distans-demo.com` | Cultura Alameda (Sevilla) |
+| Vendedor 10 | `demo.vendedor10@distans-demo.com` | TecnologÃ­a Sevilla Este (Sevilla) |
+
+La contraseÃ±a puede personalizarse sin editar el cÃ³digo:
 
 ```bash
-docker-compose logs -f web
+docker compose exec -e DEMO_PASSWORD="OtraClaveDePruebaSegura!" web python -m scripts.seed_catalogo
 ```
 
-Detener los contenedores:
+## ConfiguraciÃ³n
+
+Las variables disponibles se documentan en `.env.example`.
+
+| Variable | DescripciÃ³n |
+|---|---|
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Nombre y credenciales de PostgreSQL |
+| `DB_HOST`, `DB_PORT` | DirecciÃ³n del servidor PostgreSQL |
+| `SESSION_SECRET_KEY` | Firma criptogrÃ¡fica de las sesiones |
+| `ENVIRONMENT` | Entorno `development`, `staging` o `production` |
+| `ALLOWED_HOSTS` | Hosts HTTP admitidos, separados por comas |
+| `PUBLIC_BASE_URL` | URL utilizada en enlaces y retornos externos |
+| `SMTP_*` | ConfiguraciÃ³n para recuperaciÃ³n de contraseÃ±as |
+| `STRIPE_SECRET_KEY` | Clave privada de Stripe |
+| `STRIPE_WEBHOOK_SECRET` | Secreto de validaciÃ³n de webhooks |
+| `CHECKOUT_IVA` | Tipo de IVA aplicado al pedido |
+| `CHECKOUT_ENVIO` | Coste fijo de entrega |
+
+Para producciÃ³n deben configurarse HTTPS, `ENVIRONMENT=production`, hosts explÃ­citos, secretos externos al repositorio, SMTP con STARTTLS y credenciales Stripe del entorno correspondiente.
+
+## Modelo de permisos
+
+La interfaz oculta las acciones no disponibles, pero la protecciÃ³n efectiva se aplica siempre en el servidor.
+
+| Recurso | Comprador | Vendedor | Administrador |
+|---|---:|---:|---:|
+| CatÃ¡logo pÃºblico | Lectura | Limitado a su contexto | Lectura global |
+| Perfil propio | SÃ­ | SÃ­ | SÃ­ |
+| Carrito y pedidos propios | SÃ­ | No | SupervisiÃ³n global |
+| Tienda y productos | No | Solo los propios | Todas las tiendas |
+| Subpedidos | No | Solo los de su tienda | Todos |
+| Usuarios y suscripciones | No | No | SÃ­ |
+
+## Seguridad
+
+El proyecto incorpora:
+
+- contraseÃ±as derivadas mediante PBKDF2-SHA256 con sal aleatoria;
+- sesiones firmadas, cookies `SameSite=Lax` y cookies `Secure` fuera de desarrollo;
+- invalidaciÃ³n de sesiones tras cambiar o restablecer la contraseÃ±a;
+- protecciÃ³n CSRF de doble envÃ­o en operaciones autenticadas;
+- comprobaciones de rol y propiedad en cada recurso privado;
+- validaciÃ³n Pydantic de tipos, longitudes, rangos y enumeraciones;
+- control transaccional de stock y recÃ¡lculo de importes en el servidor;
+- verificaciÃ³n de firma y lÃ­mite de 5 MB para imÃ¡genes;
+- validaciÃ³n de `Host`, CSP, HSTS en producciÃ³n y protecciÃ³n contra framing y MIME sniffing;
+- verificaciÃ³n criptogrÃ¡fica de webhooks de Stripe.
+
+Estas medidas reducen la superficie de ataque, pero no sustituyen una auditorÃ­a profesional. Un despliegue real debe aÃ±adir monitorizaciÃ³n, copias de seguridad, actualizaciÃ³n periÃ³dica de dependencias, limitaciÃ³n de intentos en el proxy y revisiÃ³n externa.
+
+## Pruebas
+
+La suite automatizada cubre autenticaciÃ³n, perfiles, autorizaciÃ³n por roles, catÃ¡logo, filtros, carrito, compra, pagos, favoritos, valoraciones, comentarios, administraciÃ³n y estados de pedidos.
 
 ```bash
-docker-compose down
+docker compose exec -e PYTHONPATH=/app web python -m pytest -q
 ```
 
-Reiniciar la API (si instalas una nueva dependencia):
+## Estructura del repositorio
+
+```text
+app/
+  routers/            endpoints y vistas por dominio
+  models.py           entidades y relaciones SQLAlchemy
+  schemas.py          contratos y validaciÃ³n Pydantic
+  security.py         contraseÃ±as y utilidades de seguridad
+  migrations.py       actualizaciones incrementales del esquema
+scripts/
+  seed_catalogo.py    entorno reproducible de demostraciÃ³n
+templates/            vistas Jinja2
+static/               estilos, JavaScript, recursos y Leaflet
+tests/                pruebas automatizadas
+migrations/           documentaciÃ³n y SQL histÃ³rico
+main.py               configuraciÃ³n principal de FastAPI
+docker-compose.yml    servicios de aplicaciÃ³n, base de datos y correo
+```
+
+## Operaciones habituales
 
 ```bash
-docker-compose restart web
+# Consultar los registros
+docker compose logs -f web
+
+# Detener los servicios conservando la base de datos
+docker compose down
+
+# Detener los servicios y eliminar tambiÃ©n el volumen de datos
+docker compose down -v
 ```
 
-Acceder a la base de datos PostGIS desde la terminal:
+PostgreSQL utiliza el volumen `fastapi_postgres_data`. La opciÃ³n `down -v` lo elimina de forma irreversible.
 
-```bash
-docker-compose exec db psql -U mi_usuario -d mi_base_datos
-```
+## Estado y alcance acadÃ©mico
 
-## 🔄 Recarga automática (Hot Reload)
-El servicio web está configurado con la recarga activa. Esto significa que si haces un cambio en el archivo `main.py` (o cualquier otro archivo Python de tu proyecto), el servidor se reiniciará automáticamente dentro del contenedor en fracciones de segundo. ¡No necesitas reiniciar Docker para ver tus cambios!
-
----
-Reiniciar la API (si instalas una nueva dependencia):
-
-```bash
-docker-compose restart web
-```
-Acceder a la base de datos PostGIS desde la terminal:
-
-```bash
-docker-compose exec db psql -U mi_usuario -d mi_base_datos
-```
-🔄 Sobre la recarga automática (Hot Reload)
-El servicio web está configurado con la recarga activa. Esto significa que si haces un cambio en el archivo main.py (o cualquier otro archivo Python de tu proyecto), el servidor se reiniciará automáticamente dentro del contenedor en fracciones de segundo. ¡No necesitas reiniciar Docker para ver tus cambios!
-
-
-## Cuenta, administración y recuperación de contraseña
-
-- `/usuarios/cuenta`: consulta y edición de datos, incluido email, y cambio de contraseña.
-- `/admin/usuarios/panel`: listado paginado, creación, edición y eliminación. Requiere un administrador existente; el registro público solo admite comprador o vendedor.
-- `/recuperar-contrasena`: envío de un enlace por correo. `/restablecer-contrasena`: formulario para establecer la nueva contraseña.
-
-Configura `SESSION_SECRET_KEY`, `PUBLIC_BASE_URL` y las variables `SMTP_*` de `.env.example` en `.env`. Docker Compose carga este archivo. En producción usa `ENVIRONMENT=production`, una URL pública HTTPS y SMTP con STARTTLS. No guardes credenciales reales en el repositorio. Para pruebas locales puede utilizarse un servidor SMTP de desarrollo, con `SMTP_STARTTLS=false` y su puerto correspondiente. Si el envío falla, se registra un error sin exponer el correo o el token y se permite reintentar.
-
-Las contraseñas nuevas admiten entre 8 y 128 caracteres y se almacenan con PBKDF2-SHA256, salt aleatoria y 600000 iteraciones. Las contraseñas existentes siguen verificándose. El cambio o restablecimiento invalida las sesiones anteriores. Las operaciones de edición autenticadas requieren `X-CSRF-Token` con el valor de la cookie `csrf_token`.
-
-Los enlaces caducan en 30 minutos, son de un solo uso y quedan invalidados si cambia el email o la contraseña. La respuesta de recuperación no revela si existe la cuenta; las solicitudes a la misma cuenta tienen un intervalo de un minuto. La tabla nueva `restablecimientos_contrasena` se crea al arrancar mediante el mecanismo existente `create_all`, sin alterar los datos de usuarios existentes.
-
-La eliminación de usuarios conserva las cascadas existentes para carrito y pedidos. Si el usuario tiene tiendas, devuelve un error 409: deben reasignarse o eliminarse antes. El panel solicita confirmación antes de eliminar la cuenta.
-
-Pruebas: instala `pip install -r requirements-dev.txt` y ejecuta `python -m pytest -q`. Las pruebas de API usan SQLite en memoria y sustituyen el envío SMTP; no envían correos reales ni usan la base de producción.
-
-Criterios: [almacenamiento de contraseñas de OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) y [recuperación de contraseña de OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html).
-
-### Gestión de tiendas y productos
-
-Con sesión de vendedor, `/inicio` redirige a Mi tienda y la API del catálogo devuelve únicamente sus productos y su tienda. Las URLs públicas de tiendas y fichas ajenas devuelven 404, al igual que sus rutas de gestión. El catálogo de su tienda redirige a su panel de productos. El vendedor conserva acceso a su cuenta y sus propias líneas de pedido, sin acceso al carrito de comprador ni a administración de usuarios.
-
-Vendedores y administradores acceden a `/mi-tienda` al iniciar sesión y desde el enlace junto a Mi cuenta. El vendedor ve una tarjeta con su única tienda y algunos datos; al pulsarla abre sus productos para gestionarlos. Su cabecera contiene Productos y Editar tienda. El administrador ve todas las tiendas. Registrar tienda solo aparece para vendedores sin tienda; el servidor y un índice único en la base de datos impiden asignar dos tiendas al mismo vendedor, también desde administración.
-
-`/gestion/tiendas/nueva` registra una tienda con nombre, descripción, dirección, horario e imagen. Sus categorías se calculan automáticamente como el conjunto de las categorías de todos sus productos, sin duplicados; una tienda sin productos no tiene categorías. Su ubicación se establece pulsando el mapa o introduciendo latitud y longitud. `/gestion/tiendas/{id}/editar` permite editarla; administradores pueden asignar o reasignar el vendedor propietario.
-
-`/gestion/tiendas/{id}/productos` ofrece búsqueda y paginación, un botón Crear producto que abre su formulario y otro Editar stock que habilita la edición de unidades en la tabla. Editar / categoría abre la ficha de edición. El stock se actualiza mediante `PATCH /api/gestion/productos/{id}/stock`, sin cambiar los demás campos. Se mantienen las ocho categorías existentes del catálogo. Crear, reclasificar o eliminar productos actualiza automáticamente las categorías de la tienda. Los precios de oferta deben ser no negativos e inferiores al precio normal. El enlace Ver pedidos y resumen permite consultar el dashboard.
-
-El dashboard muestra el stock disponible, agotado o bajo (hasta cinco unidades) y los pedidos que contienen productos de esa tienda, con estado e importe de sus propias líneas. Los pedidos de otras tiendas y los datos de sus compradores no se muestran. El dashboard no crea pedidos ni procesa pagos.
-
-API de gestión: `/api/gestion/tiendas`, `/api/gestion/tiendas/{id}`, `/api/gestion/tiendas/{id}/productos` y `/api/gestion/productos/{id}`. Las operaciones de escritura requieren sesión de vendedor propietario o administrador y `X-CSRF-Token`. El servidor impide que un vendedor lea o modifique otra tienda aunque cambie los identificadores de la URL.
-
-Las categorías de tienda son un dato derivado de sus productos, sin selección ni almacenamiento independiente. Las coordenadas siguen en `coordenadas_tienda` y los productos conservan los campos de RI02. Eliminar una tienda elimina sus productos y coordenadas; si existen líneas de pedido, se devuelve 409 para conservar el historial. En ese caso los productos pueden marcarse como no disponibles. Las fichas públicas mantienen los precios de oferta, porcentaje de descuento y carrito para compradores e invitados.
-
-Pruebas: `docker compose exec -T web python -m pytest -q`, con SQLite aislada de la base local.
-
-
-## Pagos con Stripe
-
-La compra directa y la del carrito admiten invitados y compradores registrados. El proceso tiene tres pasos como máximo: datos y direcciones, revisión y pago alojado en Stripe. El contrarrembolso conserva el pago pendiente y no abre Stripe.
-
-Configura en `.env` las variables `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` y `PUBLIC_BASE_URL`. Usa inicialmente una clave `sk_test_...`. No incluyas claves reales en el repositorio ni en JavaScript. No hace falta una clave pública porque se usa Stripe Checkout alojado. En producción, `PUBLIC_BASE_URL` debe usar HTTPS y `ENVIRONMENT=production` activa las cookies de sesión seguras.
-
-Instala las dependencias actualizadas o reconstruye el contenedor con `docker compose up --build`. La migración de los nuevos campos de pago se aplica al arrancar sobre PostgreSQL.
-
-Para probar localmente con Stripe CLI:
-
-```sh
-stripe listen --forward-to localhost:8001/api/stripe/webhook
-```
-
-Copia el secreto `whsec_...` mostrado por la CLI en `STRIPE_WEBHOOK_SECRET` y reinicia la aplicación. En Stripe Checkout, usa la tarjeta de prueba `4242 4242 4242 4242`, una fecha futura y cualquier CVC de tres dígitos. Comprueba que el pago pasa de pendiente a completado al llegar el webhook; el pedido permanece en preparaci?n hasta la recogida de todos sus subpedidos.
-
-En Stripe, configura el endpoint HTTPS `/api/stripe/webhook` para los eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded` y `checkout.session.expired`. Usa el secreto específico del endpoint desplegado, distinto del de la CLI.
-
-El servidor calcula el importe en céntimos de EUR, guarda el pedido y reserva el stock antes de crear la sesión de Stripe. Cada pedido utiliza una clave de idempotencia. Las reservas duran aproximadamente 30 minutos y se liberan una sola vez cuando Stripe confirma que la sesión ha caducado. Un proceso periódico reconcilia reservas vencidas; ante fallos de red conserva la reserva hasta verificar Stripe. La vuelta del navegador a `/pago/resultado` muestra el estado y no confirma el pago por sí misma. Los webhooks verifican la firma, la referencia, la moneda y el importe antes de marcar el pago como completado.
-
-La aplicación no recoge números de tarjeta ni CVC. Únicamente transmite a Stripe el correo, los artículos, los importes y una referencia interna del pedido. Los impuestos siguen siendo configurables con `CHECKOUT_IVA` y el envío con `CHECKOUT_ENVIO`.
-
-Referencias: [Stripe Checkout](https://docs.stripe.com/payments/checkout/how-checkout-works), [confirmación de pedidos](https://docs.stripe.com/checkout/fulfillment), [reservas de inventario](https://docs.stripe.com/payments/checkout/managing-limited-inventory) y [verificación de firmas](https://docs.stripe.com/webhooks/signature).
-
+Distans implementa un producto funcional completo para su evaluaciÃ³n como TFG. El entorno incluido estÃ¡ orientado a desarrollo y demostraciÃ³n. Para convertirlo en un servicio comercial serÃ­a recomendable incorporar migraciones versionadas con Alembic, observabilidad centralizada, almacenamiento externo de imÃ¡genes, copias automatizadas, despliegue continuo y una auditorÃ­a de seguridad independiente.
 

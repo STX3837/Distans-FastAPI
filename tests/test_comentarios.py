@@ -99,3 +99,31 @@ def test_admin_puede_editar_y_borrar_comentarios_ajenos(client, db_session, user
     assert client.delete(admin_tienda, headers=headers).status_code == 200
     assert db_session.query(ComentarioTienda).count() == 0
     assert 'Todavía no hay comentarios.' in client.get(f'/tiendas/{tienda.id}').text
+
+
+def test_gestion_comentarios_respeta_propiedad_y_roles(client, db_session, user_factory):
+    vendedor = user_factory(rol=RolUsuario.VENDEDOR)
+    otro = user_factory(email='otro-vendedor@example.com', rol=RolUsuario.VENDEDOR)
+    comprador = user_factory(email='gestion-comentarios@example.com')
+    admin = user_factory(email='gestion-admin@example.com', rol=RolUsuario.ADMIN)
+    tienda = Tienda(nombre='Tienda del comentario', vendedor_id=vendedor.id)
+    db_session.add(tienda); db_session.flush()
+    producto = Producto(nombre='Producto con comentario', precio=10, categoria=Categoria.HOGAR_BRICOLAJE, tienda_id=tienda.id)
+    db_session.add(producto); db_session.flush()
+    db_session.add(ComentarioProducto(usuario_id=comprador.id, producto_id=producto.id, texto='Texto original'))
+    db_session.commit()
+    url = f'/api/gestion/productos/{producto.id}/comentarios'
+
+    headers = login(client, otro)
+    assert client.get(url).status_code == 404
+    headers = login(client, vendedor)
+    assert client.get(url).json()['puede_editar'] is False
+    assert client.put(f'{url}/{comprador.id}', json={'texto': 'No permitido'}, headers=headers).status_code == 403
+    assert 'data-product-comments' in client.get(f'/gestion/tiendas/{tienda.id}/productos').text
+    assert client.delete(f'{url}/{comprador.id}', headers=headers).status_code == 200
+
+    db_session.add(ComentarioProducto(usuario_id=comprador.id, producto_id=producto.id, texto='Segundo texto')); db_session.commit()
+    headers = login(client, admin)
+    assert client.get(url).json()['puede_editar'] is True
+    assert client.put(f'{url}/{comprador.id}', json={'texto': 'Editado por admin'}, headers=headers).status_code == 200
+    assert db_session.get(ComentarioProducto, (comprador.id, producto.id)).texto == 'Editado por admin'
