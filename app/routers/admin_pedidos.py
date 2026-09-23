@@ -47,10 +47,7 @@ class PedidoContactoDatos(BaseModel):
     email_comprador: EmailStr | None = None
     direccion_envio: str = Field(min_length=1, max_length=500)
     direccion_facturacion: str = Field(min_length=1, max_length=500)
-    telefono: str = Field(default="", max_length=50)
-    nombre_comprador: str | None = Field(default=None, min_length=1, max_length=100)
-    apellidos_comprador: str | None = Field(default=None, min_length=1, max_length=150)
-    email_comprador: EmailStr | None = None
+    telefono: str = Field(default="", max_length=30, pattern=r"^[+0-9 ()-]*$")
 
     @field_validator("nombre_comprador", "apellidos_comprador", "direccion_envio", "direccion_facturacion")
     @classmethod

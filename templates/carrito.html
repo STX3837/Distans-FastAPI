@@ -22,4 +22,4 @@
 {% if items %}<aside class="cart-summary" aria-labelledby="resumenCarrito"><h2 id="resumenCarrito">Resumen del carrito</h2><p>Todo lo que has elegido, en un solo lugar.</p><dl><div><dt>Productos</dt><dd>{{ items|length }}</dd></div><div><dt>Unidades</dt><dd>{{ cantidad }}</dd></div><div class="cart-total"><dt>Total</dt><dd>{{ '%.2f'|format(total) }} €</dd></div></dl><button class="add-cart" type="button" data-buy-cart>Continuar con la compra →</button><p class="cart-summary-note">Revisa las cantidades antes de continuar. Los datos de pago y entrega se completan en el siguiente paso.</p></aside>{% endif %}
 </div><p data-cart-feedback role="status" aria-live="polite"></p>
 </main>{% endblock %}
-{% block scripts %}<script src="/static/carrito.js?v=cesta-1"></script>{% endblock %}
+{% block scripts %}<script src="/static/carrito.js?v=api-errors-2"></script>{% endblock %}

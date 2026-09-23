@@ -3,7 +3,7 @@
     async function mutate(url, method, data) {
         const token = document.cookie.split('; ').find(value => value.startsWith('csrf_token='));
         const response = await fetch(url, {method, headers: {'Content-Type': 'application/json', 'X-CSRF-Token': token ? decodeURIComponent(token.slice(11)) : ''}, ...(data ? {body: JSON.stringify(data)} : {})});
-        const result = await response.json();
+        const result = await readApiResponse(response);
         if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : 'Revisa los campos y los precios del formulario.');
         return result;
     }
@@ -16,7 +16,7 @@
         const token = document.cookie.split('; ').find(value => value.startsWith('csrf_token='));
         const response = await fetch('/api/gestion/imagenes', {method: 'POST', body,
             headers: {'X-CSRF-Token': token ? decodeURIComponent(token.slice(11)) : ''}});
-        const result = await response.json();
+        const result = await readApiResponse(response);
         if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : 'No se pudo subir la imagen');
         form.elements.imagen.value = result.imagen;
         form.querySelector('[data-image-file]').value = '';

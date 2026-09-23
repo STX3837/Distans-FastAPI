@@ -9,7 +9,8 @@ document.querySelectorAll('.comment-form').forEach(form => {
             headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf()},
             ...(body ? {body: JSON.stringify(body)} : {}),
         });
-        if (!response.ok) throw new Error('No se pudo guardar el comentario. Inténtalo de nuevo.');
+        const data = await readApiResponse(response);
+        if (!response.ok) throw new Error(apiErrorMessage(data && data.detail, 'No se pudo guardar el comentario. Inténtalo de nuevo.'));
         window.location.reload();
     }
 
@@ -49,7 +50,8 @@ document.querySelectorAll('.admin-comment-form').forEach(form => {
             headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf()},
             ...(body ? {body: JSON.stringify(body)} : {}),
         });
-        if (!response.ok) throw new Error('No se pudo modificar el comentario. Inténtalo de nuevo.');
+        const data = await readApiResponse(response);
+        if (!response.ok) throw new Error(apiErrorMessage(data && data.detail, 'No se pudo modificar el comentario. Inténtalo de nuevo.'));
         window.location.reload();
     }
 

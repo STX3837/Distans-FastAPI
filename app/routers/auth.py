@@ -4,7 +4,7 @@ import hashlib
 from fastapi import APIRouter, Depends, HTTPException, Request, Form, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.crud import autenticar_usuario, crear_usuario
@@ -19,6 +19,11 @@ templates = Jinja2Templates(directory="templates")
 class LoginRequest(BaseModel):
     email: EmailStr
     contrasena: str = Field(max_length=128)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalizar_email(cls, value):
+        return str(value).strip().lower()
 
 
 def _template_context(request: Request, active_route: str = "", user_name: str | None = None) -> dict:

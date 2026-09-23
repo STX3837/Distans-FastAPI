@@ -18,7 +18,7 @@
             const response = await fetch('/api/compra/carrito', {method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRF-Token': token ? decodeURIComponent(token.slice(11)) : ''},
                 body: JSON.stringify({cantidades})});
-            const data = await response.json();
+            const data = await readApiResponse(response);
             if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Revisa las cantidades seleccionadas.');
             window.location.assign(data.url);
         } catch (error) {feedback.textContent = error.message || 'No se pudo iniciar la compra.';}
@@ -46,7 +46,7 @@
                     headers: {'Content-Type': 'application/json', 'X-CSRF-Token': token ? decodeURIComponent(token.slice(11)) : ''},
                     ...(remove ? {} : {body: JSON.stringify({cantidad: input ? Number(input.value) : 1})}),
                 });
-                const data = await response.json();
+                const data = await readApiResponse(response);
                 if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Revisa la cantidad seleccionada.');
                 if (!button.dataset.addCart) {window.location.reload(); return;}
                 window.dispatchEvent(new CustomEvent('cart-updated', {detail: data}));

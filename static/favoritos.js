@@ -21,7 +21,8 @@
                 method: saved ? 'DELETE' : 'PUT',
                 headers: {'X-CSRF-Token': document.cookie.split('; ').find(part => part.startsWith('csrf_token='))?.split('=')[1] || ''},
             });
-            if (!response.ok) throw new Error((await response.json()).detail || 'No se pudo actualizar el favorito');
+            const data = await readApiResponse(response);
+            if (!response.ok) throw new Error(apiErrorMessage(data && data.detail, 'No se pudo actualizar el favorito'));
             document.querySelectorAll(`[data-favorite-type="${button.dataset.favoriteType}"][data-favorite-id="${button.dataset.favoriteId}"]`)
                 .forEach(other => set(other, !saved));
             if (location.pathname === '/favoritos' && saved) button.closest('.product-card, .store-card')?.remove();
