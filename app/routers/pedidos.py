@@ -25,6 +25,8 @@ def seguimiento(request: Request, codigo: str = Query("", max_length=100), db: S
 
 @router.get("/pedidos/historial")
 def historial(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = _obtener_usuario_actual(request, db)
     if usuario.rol != RolUsuario.COMPRADOR:
         raise HTTPException(403, "Acceso exclusivo para compradores")
@@ -48,6 +50,8 @@ def tienda_del_vendedor(request, db, tienda_id):
 @router.get("/gestion/tiendas/{tienda_id}/pedidos")
 def pedidos_tienda(tienda_id: int, request: Request, q: str = Query("", max_length=100),
                    comprador: str = Query("", max_length=200), db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     tienda = tienda_del_vendedor(request, db, tienda_id)
     query = db.query(Subpedido).join(Pedido).outerjoin(Usuario, Pedido.usuario_id == Usuario.id).filter(Subpedido.tienda_id == tienda.id)
     if q.strip():
@@ -94,6 +98,12 @@ def cambiar_estado(tienda_id: int, pedido_id: int, request: Request, estado: Est
         raise HTTPException(422, "Usa la acción de cancelar subpedido")
     if pedido.estado in {EstadoPedido.CANCELADO, EstadoPedido.ENTREGADO} or sub.estado == EstadoSubpedido.CANCELADO:
         raise HTTPException(409, "El pedido ya está finalizado")
+    siguiente = {
+        EstadoSubpedido.PREPARACION: EstadoSubpedido.LISTO_PARA_RECOGER,
+        EstadoSubpedido.LISTO_PARA_RECOGER: EstadoSubpedido.RECOGIDO,
+    }.get(sub.estado)
+    if estado != sub.estado and estado != siguiente:
+        raise HTTPException(409, "El estado solo puede avanzar al siguiente paso")
     sub.estado = estado
     recalcular_estado(pedido)
     db.commit()

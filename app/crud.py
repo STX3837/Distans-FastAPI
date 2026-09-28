@@ -106,6 +106,11 @@ def actualizar_usuario_admin(db: Session, usuario_id: int, datos_actualizacion: 
         return None
     
     datos_dict = datos_actualizacion.model_dump(exclude_unset=True)
+    nuevo_rol = datos_dict.get("rol")
+    if nuevo_rol is not None:
+        valor_rol = nuevo_rol.value if hasattr(nuevo_rol, "value") else str(nuevo_rol).lower()
+        if usuario.rol == RolUsuario.VENDEDOR and valor_rol != RolUsuario.VENDEDOR.value and usuario.tiendas:
+            raise HTTPException(status_code=409, detail="Reasigna o elimina la tienda antes de cambiar el rol del vendedor")
     if "email" in datos_dict:
         existente = obtener_usuario_por_email(db, datos_dict["email"])
         if existente and existente.id != usuario.id:

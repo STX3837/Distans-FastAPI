@@ -1,6 +1,7 @@
 """Planes de vendedores y pago de una mensualidad Premium."""
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -43,11 +44,15 @@ def pagina_plan(request, db, resultado=False):
 
 @router.get('/gestion/plan')
 def mostrar_planes(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get('usuario'):
+        return RedirectResponse('/login', status_code=303)
     return pagina_plan(request, db)
 
 
 @router.get('/gestion/plan/resultado')
 def resultado_plan(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get('usuario'):
+        return RedirectResponse('/login', status_code=303)
     return pagina_plan(request, db, resultado=True)
 
 

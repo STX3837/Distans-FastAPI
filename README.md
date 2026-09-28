@@ -91,6 +91,10 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
+Compose ejecuta primero el servicio `migrate` y solo inicia la aplicación cuando
+el esquema ha quedado preparado. Si se arranca Uvicorn sin Compose, hay que ejecutar
+antes `python -m scripts.migrate`; la aplicación web no modifica el esquema al arrancar.
+
 En PowerShell, utiliza `Copy-Item .env.example .env` en lugar de `cp`.
 
 Antes de levantar un entorno pÃºblico deben sustituirse las credenciales de PostgreSQL y `SESSION_SECRET_KEY` de `.env`. El valor de sesiÃ³n debe ser largo, aleatorio y privado.

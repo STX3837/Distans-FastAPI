@@ -3,7 +3,9 @@ from datetime import datetime
 from math import ceil, isfinite
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -39,6 +41,13 @@ class PedidoDatos(BaseModel):
     def requerido(cls, value):
         if not value.strip(): raise ValueError("Campo obligatorio")
         return value.strip()
+
+    @field_validator("metodo_pago")
+    @classmethod
+    def solo_efectivo(cls, value):
+        if value != MetodoPago.EFECTIVO:
+            raise ValueError("Los pedidos administrativos solo admiten pago en efectivo")
+        return value
 
 
 class PedidoContactoDatos(BaseModel):
@@ -84,12 +93,14 @@ def obtener(db, pedido_id):
 
 @router.get("/panel")
 def panel(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     _obtener_admin_actual(request, db)
     compradores = db.query(Usuario).filter(Usuario.rol == RolUsuario.COMPRADOR).order_by(Usuario.nombre).all()
     productos = db.query(Producto).order_by(Producto.nombre).all()
     return pagina_publica(request, db, "admin_pedidos.html", {
         "compradores": compradores, "productos_pedido": productos,
-        "estados_pedido": list(EstadoPedido), "metodos_pago": list(MetodoPago),
+        "estados_pedido": list(EstadoPedido), "metodos_pago": [MetodoPago.EFECTIVO],
     })
 
 
@@ -160,9 +171,18 @@ def guardar(db, pedido, datos):
         nombre_comprador, apellidos_comprador, email_comprador = comprador.nombre, comprador.apellidos, comprador.email
     if len({linea.producto_id for linea in datos.lineas}) != len(datos.lineas):
         raise HTTPException(422, "Cada producto debe aparecer una sola vez; ajusta su cantidad")
+    productos = {producto.id: producto for producto in db.query(Producto).filter(
+        Producto.id.in_(sorted(linea.producto_id for linea in datos.lineas))
+    ).with_for_update().all()}
+    anteriores = {}
+    if pedido is not None:
+        for linea in pedido.items:
+            if not linea.cancelado:
+                anteriores[linea.producto_id] = anteriores.get(linea.producto_id, 0) + linea.cantidad
+    nuevas = {linea.producto_id: linea.cantidad for linea in datos.lineas}
     lineas = []
     for linea in datos.lineas:
-        producto = db.get(Producto, linea.producto_id)
+        producto = productos.get(linea.producto_id)
         if producto is None: raise HTTPException(422, "Producto no encontrado")
         if not producto.tienda.compra_online:
             raise HTTPException(409, "Esta tienda es solo un catálogo visual; sus productos no se pueden incluir en pedidos")
@@ -189,9 +209,27 @@ def guardar(db, pedido, datos):
     pedido.total = total
     pedido.fecha_actualizacion = datetime.utcnow()
     try:
+        # Reserva solo el incremento y devuelve cualquier reducción. Las
+        # actualizaciones condicionales evitan vender stock negativo.
+        for producto_id in sorted(set(anteriores) | set(nuevas)):
+            diferencia = nuevas.get(producto_id, 0) - anteriores.get(producto_id, 0)
+            if diferencia > 0:
+                reservado = db.execute(update(Producto).where(
+                    Producto.id == producto_id,
+                    Producto.disponible.is_(True),
+                    Producto.stock >= diferencia,
+                ).values(stock=Producto.stock - diferencia))
+                if reservado.rowcount != 1:
+                    raise HTTPException(409, "No hay stock suficiente para el pedido")
+            elif diferencia < 0:
+                db.execute(update(Producto).where(Producto.id == producto_id).values(
+                    stock=Producto.stock - diferencia))
         from app.estado_pedidos import sincronizar_subpedidos
         sincronizar_subpedidos(db, pedido)
         db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
     except IntegrityError:
         db.rollback()
         raise HTTPException(409, "El código de pedido ya existe o hay datos relacionados incompatibles")
@@ -216,5 +254,14 @@ def editar(pedido_id: int, datos: PedidoDatos, request: Request, db: Session = D
 def eliminar(pedido_id: int, request: Request, db: Session = Depends(get_db)):
     _obtener_admin_actual(request, db)
     _validar_csrf(request)
-    db.delete(obtener(db, pedido_id))
+    pedido = db.query(Pedido).filter_by(id=pedido_id).with_for_update().first()
+    if pedido is None:
+        raise HTTPException(404, "Pedido no encontrado")
+    cantidades = {}
+    for linea in pedido.items:
+        if not linea.cancelado:
+            cantidades[linea.producto_id] = cantidades.get(linea.producto_id, 0) + linea.cantidad
+    for producto_id, cantidad in sorted(cantidades.items()):
+        db.execute(update(Producto).where(Producto.id == producto_id).values(stock=Producto.stock + cantidad))
+    db.delete(pedido)
     db.commit()

@@ -26,9 +26,11 @@
         </a>
 
         <div class="topbar-actions">
-            {% if not es_vendedor and not es_admin %}<a class="topbar-button" href="/carrito">Carrito</a>{% endif %}
+            {% if es_comprador or es_invitado %}<a class="topbar-button" href="/carrito">Carrito</a>{% endif %}
             {% if user_name %}
-            <a class="topbar-button" href="/usuarios/cuenta">Mi cuenta</a>
+            <a class="icon-button" href="/usuarios/cuenta" aria-label="Mi cuenta de {{ user_name }}">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 21C20 17.6863 16.4183 15 12 15C7.58172 15 4 17.6863 4 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/></svg>
+            </a>
             {% if es_vendedor or es_admin %}<a class="topbar-button" href="/mi-tienda">{{ 'Tiendas' if es_admin else 'Mi tienda' }}</a>{% endif %}
             {% if es_admin %}<a class="topbar-button" href="/admin/usuarios/panel">Usuarios</a>{% endif %}
             <span class="user-name">{{ user_name }}</span>
@@ -36,12 +38,7 @@
             {% else %}
             <a class="topbar-button {% if active_route == '/registro' %}active{% endif %}" href="/registro">Registrarse</a>
             <a class="topbar-button {% if active_route == '/login' %}active{% endif %}" href="/login">Iniciar sesión</a>
-            <a class="icon-button" href="/login" aria-label="Usuario">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M20 21C20 17.6863 16.4183 15 12 15C7.58172 15 4 17.6863 4 21" stroke="#1E4FA8" stroke-width="1.8" stroke-linecap="round"/>
-                    <circle cx="12" cy="8" r="4" stroke="#1E4FA8" stroke-width="1.8"/>
-                </svg>
-            </a>
+            {% if es_invitado %}
             <a class="icon-button" href="/carrito" aria-label="Carrito">
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M2 3H5L7.2 14.2C7.3 14.7 7.7 15 8.2 15H18.6C19.1 15 19.5 14.7 19.6 14.2L21 6H6" stroke="#1E4FA8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -50,6 +47,7 @@
                 </svg>
             </a>
             {% endif %}
+            {% endif %}
         </div>
     </header>
     {% endif %}
@@ -57,7 +55,7 @@
 
     {% block content %}{% endblock %}
 
-    {% if not es_vendedor and not es_admin %}
+    {% if es_comprador or es_invitado %}
     {% if es_comprador %}<a class="persistent-favorites" href="/favoritos">♥ Favoritos</a>{% endif %}
     <a class="persistent-cart" href="/carrito">Carrito <span data-cart-count aria-live="polite">0</span></a>
     <script src="/static/cesta.js?v=1"></script>

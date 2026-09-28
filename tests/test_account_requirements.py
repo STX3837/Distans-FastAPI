@@ -93,6 +93,10 @@ def test_html_views_and_admin_permissions(client, user_factory):
     login(client, normal)
     profile = client.get("/usuarios/cuenta")
     assert profile.status_code == 200 and 'id="cuentaForm"' in profile.text
+    assert 'class="market-header"' in profile.text
+    assert 'aria-label="Navegación de compras"' in profile.text
+    assert 'href="/inicio?tab=tiendas"' in profile.text
+    assert 'maxlength="50"' in profile.text
     assert normal.contrasena_hash not in profile.text
     assert client.get("/admin/usuarios/panel").status_code == 403
     admin = user_factory(email="admin@example.com", rol=RolUsuario.ADMIN)

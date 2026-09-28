@@ -8,7 +8,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -61,6 +61,17 @@ def tienda_permitida(db, usuario, tienda_id):
     if tienda is None:
         raise HTTPException(404, "Tienda no encontrada")
     return tienda
+
+
+def vendedores_asignables(db, tienda=None):
+    """Vendedores sin tienda, más el propietario actual al editar."""
+    tiene_tienda = db.query(Tienda.id).filter(Tienda.vendedor_id == Usuario.id).exists()
+    condicion = ~tiene_tienda
+    if tienda is not None:
+        condicion = or_(condicion, Usuario.id == tienda.vendedor_id)
+    return db.query(Usuario).filter(
+        Usuario.rol == RolUsuario.VENDEDOR, condicion,
+    ).order_by(Usuario.nombre, Usuario.email, Usuario.id).all()
 
 
 class TiendaDatos(BaseModel):
@@ -260,6 +271,8 @@ def borrar_producto(producto_id: int, request: Request, db: Session = Depends(ge
 @router.get("/mi-tienda")
 @router.get("/admin/tiendas")
 def mis_tiendas(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = gestor(request, db)
     if request.url.path == "/admin/tiendas" and usuario.rol != RolUsuario.ADMIN:
         raise HTTPException(403, "Acceso exclusivo para administradores")
@@ -270,11 +283,13 @@ def mis_tiendas(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/gestion/tiendas/nueva")
 def nueva_tienda(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = gestor(request, db)
     if usuario.rol == RolUsuario.VENDEDOR and db.query(Tienda).filter_by(vendedor_id=usuario.id).first():
         return RedirectResponse("/mi-tienda", status_code=303)
     return pagina_publica(request, db, "gestion_tienda_form.html", {
-        "tienda_gestion": None, "vendedores": db.query(Usuario).filter(Usuario.rol == RolUsuario.VENDEDOR).all() if usuario.rol == RolUsuario.ADMIN else [],
+        "tienda_gestion": None, "vendedores": vendedores_asignables(db) if usuario.rol == RolUsuario.ADMIN else [],
     })
 
 
@@ -380,17 +395,21 @@ def editar_stock(producto_id: int, datos: StockDatos, request: Request, db: Sess
 
 @router.get("/gestion/tiendas/{tienda_id}/editar")
 def formulario_tienda(tienda_id: int, request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = gestor(request, db)
     tienda = tienda_permitida(db, usuario, tienda_id)
     return pagina_publica(request, db, "gestion_tienda_form.html", {
         "tienda_gestion": datos_tienda(tienda), "tienda_activa": tienda.id,
-        "vendedores": db.query(Usuario).filter(Usuario.rol == RolUsuario.VENDEDOR).all() if usuario.rol == RolUsuario.ADMIN else [],
+        "vendedores": vendedores_asignables(db, tienda) if usuario.rol == RolUsuario.ADMIN else [],
     })
 
 
 @router.get("/gestion/tiendas/{tienda_id}/productos")
 def panel_productos(tienda_id: int, request: Request, q: str = Query("", max_length=120),
                     pagina: int = Query(1, ge=1), db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = gestor(request, db)
     tienda = tienda_permitida(db, usuario, tienda_id)
     query = db.query(Producto).filter_by(tienda_id=tienda.id)
@@ -408,6 +427,8 @@ def panel_productos(tienda_id: int, request: Request, q: str = Query("", max_len
 
 @router.get("/gestion/tiendas/{tienda_id}")
 def dashboard(tienda_id: int, request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = gestor(request, db)
     tienda = tienda_permitida(db, usuario, tienda_id)
     # Solo las líneas de esta tienda, incluso en pedidos que contienen varias tiendas.
@@ -427,6 +448,8 @@ def dashboard(tienda_id: int, request: Request, db: Session = Depends(get_db)):
 
 @router.get("/gestion/tiendas/{tienda_id}/estadisticas")
 def estadisticas(tienda_id: int, request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = gestor(request, db)
     tienda = tienda_permitida(db, usuario, tienda_id)
     visitas_tienda = db.query(func.count(VisitaTienda.id)).filter(VisitaTienda.tienda_id == tienda.id).scalar() or 0

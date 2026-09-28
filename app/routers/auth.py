@@ -68,7 +68,10 @@ def pagina_acceso(request: Request):
 def entrar_invitado(request: Request, csrf_token: str = Form("")):
     if request.session.get("usuario"):
         _validar_csrf(request, csrf_token)
+    if request.session.get("es_invitado") and not request.session.get("usuario"):
+        return RedirectResponse(url="/inicio", status_code=303)
     request.session.clear()
+    request.session["es_invitado"] = True
     response = RedirectResponse(url="/inicio", status_code=303)
     response.delete_cookie("csrf_token")
     return response
@@ -182,22 +185,17 @@ def cerrar_sesion(request: Request):
 @router.get("/login", response_class=HTMLResponse)
 def pagina_login(request: Request, db: Session = Depends(get_db)):
     """Página de login."""
-    if request.session.get("usuario"):
-        from app.routers.users import _obtener_usuario_actual
-        try:
-            usuario = _obtener_usuario_actual(request, db)
-        except HTTPException as error:
-            if error.status_code not in {401, 403, 404}:
-                raise
-            request.session.clear()
-        else:
-            return RedirectResponse(url="/mi-tienda" if usuario.rol in {RolUsuario.VENDEDOR, RolUsuario.ADMIN} else "/inicio", status_code=status.HTTP_303_SEE_OTHER)
-
-    return templates.TemplateResponse(
+    from app.routers.catalogo import contexto_publico
+    contexto = contexto_publico(request, db)
+    csrf_token = request.session.setdefault("csrf_token", secrets.token_urlsafe(32))
+    response = templates.TemplateResponse(
         request=request,
         name="login.html",
-        context=_template_context(request, active_route="/login"),
+        context={**_template_context(request, active_route="/login"), **contexto, "csrf_token": csrf_token},
     )
+    response.headers["Cache-Control"] = "no-store"
+    response.set_cookie("csrf_token", csrf_token, samesite="lax", secure=request.url.scheme == "https")
+    return response
 
 
 @router.get("/bienvenida", response_class=HTMLResponse)

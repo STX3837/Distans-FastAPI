@@ -176,6 +176,8 @@ def test_admin_order_crud_totals_snapshots_and_cascade(client, admin_data, db_se
     assert 'nuevoPedido' not in client.get('/admin/pedidos/panel').text
     response = client.post('/admin/pedidos/', json=data, headers=h)
     assert response.status_code == 201
+    db_session.expire_all()
+    assert db_session.get(Producto, product['id']).stock == 6
     order = response.json()
     assert client.post('/admin/pedidos/', json=data, headers=h).status_code == 409
     assert order['subtotal'] == 30 and order['total'] == 35
@@ -184,6 +186,8 @@ def test_admin_order_crud_totals_snapshots_and_cascade(client, admin_data, db_se
     url = f'/admin/pedidos/{order["id"]}'
     edited = client.put(url, json={**data, 'estado': 'en preparacion', 'lineas': [{'producto_id': product['id'], 'cantidad': 3, 'precio_unitario': 14}]}, headers=h)
     assert edited.status_code == 200
+    db_session.expire_all()
+    assert db_session.get(Producto, product['id']).stock == 5
     assert edited.json()['estado'] == 'en preparacion' and edited.json()['total'] == 47
     assert db_session.query(ProductoPedido).count() == 1
     assert client.get(url).json()['lineas'][0]['cantidad'] == 3
@@ -191,6 +195,8 @@ def test_admin_order_crud_totals_snapshots_and_cascade(client, admin_data, db_se
     assert listing['total'] == 1
     assert client.get('/admin/pedidos/', params={'estado': 'cancelado'}).json()['total'] == 0
     assert client.delete(url, headers=h).status_code == 204
+    db_session.expire_all()
+    assert db_session.get(Producto, product['id']).stock == 8
     assert db_session.query(ProductoPedido).count() == 0
     assert client.get(url).status_code == 404
 
@@ -209,3 +215,13 @@ def test_order_validation_and_non_admin_permissions(client, admin_data, db_sessi
         for path in ('/admin/tiendas', '/admin/usuarios/panel', '/admin/pedidos/panel', '/admin/pedidos/', '/admin/pedidos/999'):
             assert client.get(path).status_code == 403
         assert client.put(f'/admin/pedidos/{order_id}', json=data, headers=headers).status_code == 403
+
+
+@pytest.mark.parametrize('metodo', ['tarjeta_credito', 'tarjeta_debito', 'paypal', 'transferencia'])
+def test_admin_orders_reject_payment_methods_without_payment_flow(client, admin_data, metodo):
+    _admin, _seller, buyer, _shop, product, headers = admin_data
+    data = {**payload(buyer, product, code='ADMIN-' + metodo), 'metodo_pago': metodo}
+    assert client.post('/admin/pedidos/', json=data, headers=headers).status_code == 422
+    panel = client.get('/admin/pedidos/panel').text
+    assert 'value="efectivo"' in panel
+    assert 'value="paypal"' not in panel and 'value="transferencia"' not in panel

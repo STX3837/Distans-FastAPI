@@ -60,6 +60,7 @@ def test_comentarios_permisos_y_lectura_publica(client, db_session, user_factory
     assert client.put('/api/comentarios/tiendas/99999', json={'texto': 'Bien'}, headers=headers).status_code == 404
     assert client.put(url, json={'texto': 'Bien'}, headers=headers).status_code == 200
     assert client.post('/api/logout', headers=headers).status_code == 200
+    client.post('/invitado')
     pagina = client.get(f'/tiendas/{tienda.id}').text
     assert 'Bien' in pagina
     assert 'class="comment-form"' not in pagina

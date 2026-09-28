@@ -93,6 +93,19 @@ def test_rf06_rf22_filters_and_validation(client, catalog, db_session, user_fact
     assert [item["id"] for item in shops] == [shop.id]
     assert [item["id"] for item in client.get("/api/productos", params={
         "categoria": Categoria.HOGAR_BRICOLAJE.value, "tienda_valoracion_min": 4}).json()["tiendas"]] == [shop.id]
+    rated = client.get("/api/productos", params={"tienda_valoracion_min": 4}).json()
+    assert {item["tienda"]["id"] for item in rated["productos"]} == {shop.id}
+    assert all(item["nombre"] != "Taza ajena" for item in rated["productos"])
+
+
+def test_price_filter_ignores_invalid_offer(client, catalog, db_session):
+    _, _, featured, _, _ = catalog
+    featured.precio = 20
+    featured.precio_oferta = 25
+    db_session.commit()
+    result = client.get("/api/productos", params={"precio_max": 20}).json()
+    assert featured.id in [item["id"] for item in result["productos"]]
+    assert next(item for item in result["productos"] if item["id"] == featured.id)["precio_oferta"] is None
 
 
 def test_empty_search_browses_whole_catalog(client, catalog):

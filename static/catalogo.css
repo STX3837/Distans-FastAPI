@@ -32,7 +32,7 @@ body:has(.market-header) { padding-top:0;background:#f5f5f5; }
 .market-header {height:92px;background:#f5f5f5;position:relative;z-index:1000;}
 .market-top {height:48px;display:flex;align-items:center;justify-content:space-between;gap:22px;padding:0 12px;}
 .market-top .brand {gap:20px;}.market-top .brand-mark{width:46px;height:46px;}.market-top .brand-mark svg{width:46px;height:46px;}.market-top .brand-name{font-family:Georgia,serif;font-size:34px;letter-spacing:0;}
-.market-location-controls{display:flex;align-items:center;gap:6px;}.catalog-type-control{display:flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap;}.catalog-type-control select{max-width:170px;height:30px;border:1px solid #9abd9b;border-radius:3px;background:#fff;font:inherit;}
+.market-location-controls{display:flex;align-items:center;gap:6px;}.catalog-type-control{display:flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap;}.catalog-type-control select{width:205px;min-width:205px;max-width:none;height:30px;padding:0 28px 0 10px;border:1px solid #9abd9b;border-radius:3px;background:#fff;font:inherit;}
 .location-button,.radius-control select {background:#c1ffab;border:0;height:26px;width:144px;font:bold 12px Georgia,serif;color:#111;cursor:pointer;}
 .radius-control select{padding:0 14px;text-align:center;}.market-account{display:flex;align-items:center;gap:10px;margin-left:auto;}
 .account-button {background:#37a442;border:0;border-radius:2px;color:white;text-decoration:none;padding:10px 8px;font-size:10px;white-space:nowrap;cursor:pointer;}
@@ -139,6 +139,7 @@ body:has(.market-header) #productsMap{height:calc(100dvh - 190px);}
   .market-account { grid-column:1; grid-row:2; justify-self:stretch; display:flex; gap:8px; overflow-x:auto; padding:1px 0 5px; scrollbar-width:thin; scroll-snap-type:x proximity; }
   .market-account .account-button { flex:0 0 auto; min-height:38px; padding:9px 12px; border-radius:8px; font-size:12px; font-weight:700; scroll-snap-align:start; }
   .market-account .market-icon { display:none; }
+  .market-account .account-icon { display:block; flex:0 0 28px; }
   .market-location-controls { grid-column:1; grid-row:3; display:grid; grid-template-columns:minmax(0,1fr) minmax(92px,.65fr); gap:8px; width:100%; }
   .market-location-controls .location-button,
   .market-location-controls .radius-control,

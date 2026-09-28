@@ -44,13 +44,13 @@ class MetodoPago(str, Enum):
 
 class UsuarioBase(BaseModel):
     """Campos básicos de usuario"""
-    nombre: str = Field(min_length=1, max_length=100)
-    apellidos: str = Field(min_length=1, max_length=150)
-    email: EmailStr
-    telefono: Optional[str] = Field(default=None, max_length=30, pattern=r"^[+0-9 ()-]*$")
-    direccion: Optional[str] = Field(default=None, max_length=250)
-    ciudad: Optional[str] = Field(default=None, max_length=100)
-    codigo_postal: Optional[str] = Field(default=None, max_length=20, pattern=r"^[A-Za-z0-9 -]*$")
+    nombre: str = Field(min_length=1, max_length=50)
+    apellidos: str = Field(min_length=1, max_length=100)
+    email: EmailStr = Field(max_length=254)
+    telefono: Optional[str] = Field(default=None, min_length=7, max_length=20, pattern=r"^[+0-9 ()-]+$")
+    direccion: Optional[str] = Field(default=None, max_length=200)
+    ciudad: Optional[str] = Field(default=None, max_length=80)
+    codigo_postal: Optional[str] = Field(default=None, min_length=3, max_length=12, pattern=r"^[A-Za-z0-9 -]+$")
 
     @field_validator("nombre", "apellidos", mode="before")
     @classmethod
@@ -75,10 +75,10 @@ class UsuarioCreate(UsuarioBase):
 
 class UsuarioRegistro(UsuarioCreate):
     """RF27: datos de contacto y dirección obligatorios en el registro público."""
-    telefono: str = Field(min_length=1)
-    direccion: str = Field(min_length=1)
-    ciudad: str = Field(min_length=1)
-    codigo_postal: str = Field(min_length=1)
+    telefono: str = Field(min_length=7, max_length=20, pattern=r"^[+0-9 ()-]+$")
+    direccion: str = Field(min_length=1, max_length=200)
+    ciudad: str = Field(min_length=1, max_length=80)
+    codigo_postal: str = Field(min_length=3, max_length=12, pattern=r"^[A-Za-z0-9 -]+$")
 
     @field_validator("telefono", "direccion", "ciudad", "codigo_postal", mode="before")
     @classmethod
@@ -90,10 +90,10 @@ class UsuarioRegistro(UsuarioCreate):
 
 class DatosCompradorPago(UsuarioBase):
     """Datos de la cuenta reutilizables al completar el pago; no incluye credenciales."""
-    telefono: str = Field(min_length=1)
-    direccion: str = Field(min_length=1)
-    ciudad: str = Field(min_length=1)
-    codigo_postal: str = Field(min_length=1)
+    telefono: str = Field(min_length=7, max_length=20, pattern=r"^[+0-9 ()-]+$")
+    direccion: str = Field(min_length=1, max_length=200)
+    ciudad: str = Field(min_length=1, max_length=80)
+    codigo_postal: str = Field(min_length=3, max_length=12, pattern=r"^[A-Za-z0-9 -]+$")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -104,13 +104,13 @@ class UsuarioAdminCreate(UsuarioCreate):
 
 class UsuarioUpdate(BaseModel):
     """Schema para actualizar datos del usuario - RF28"""
-    nombre: Optional[str] = Field(default=None, max_length=100)
-    apellidos: Optional[str] = Field(default=None, max_length=150)
-    email: Optional[EmailStr] = None
-    telefono: Optional[str] = Field(default=None, max_length=30, pattern=r"^[+0-9 ()-]*$")
-    direccion: Optional[str] = Field(default=None, max_length=250)
-    ciudad: Optional[str] = Field(default=None, max_length=100)
-    codigo_postal: Optional[str] = Field(default=None, max_length=20, pattern=r"^[A-Za-z0-9 -]*$")
+    nombre: Optional[str] = Field(default=None, max_length=50)
+    apellidos: Optional[str] = Field(default=None, max_length=100)
+    email: Optional[EmailStr] = Field(default=None, max_length=254)
+    telefono: Optional[str] = Field(default=None, min_length=7, max_length=20, pattern=r"^[+0-9 ()-]+$")
+    direccion: Optional[str] = Field(default=None, max_length=200)
+    ciudad: Optional[str] = Field(default=None, max_length=80)
+    codigo_postal: Optional[str] = Field(default=None, min_length=3, max_length=12, pattern=r"^[A-Za-z0-9 -]+$")
 
     @field_validator("nombre", "apellidos", mode="before")
     @classmethod
@@ -146,13 +146,13 @@ class UsuarioResponse(UsuarioBase):
 
 class UsuarioAdminUpdate(BaseModel):
     """Schema para actualizar usuario como administrador - RF32"""
-    nombre: Optional[str] = Field(default=None, max_length=100)
-    apellidos: Optional[str] = Field(default=None, max_length=150)
-    email: Optional[EmailStr] = None
-    telefono: Optional[str] = Field(default=None, max_length=30, pattern=r"^[+0-9 ()-]*$")
-    direccion: Optional[str] = Field(default=None, max_length=250)
-    ciudad: Optional[str] = Field(default=None, max_length=100)
-    codigo_postal: Optional[str] = Field(default=None, max_length=20, pattern=r"^[A-Za-z0-9 -]*$")
+    nombre: Optional[str] = Field(default=None, max_length=50)
+    apellidos: Optional[str] = Field(default=None, max_length=100)
+    email: Optional[EmailStr] = Field(default=None, max_length=254)
+    telefono: Optional[str] = Field(default=None, min_length=7, max_length=20, pattern=r"^[+0-9 ()-]+$")
+    direccion: Optional[str] = Field(default=None, max_length=200)
+    ciudad: Optional[str] = Field(default=None, max_length=80)
+    codigo_postal: Optional[str] = Field(default=None, min_length=3, max_length=12, pattern=r"^[A-Za-z0-9 -]+$")
     rol: Optional[RolUsuario] = None
     activo: Optional[bool] = None
 

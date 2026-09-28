@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Iniciar sesión - Distans{% endblock %}
+{% block styles %}{% if cabecera_comprador or cabecera_gestion %}<link rel="stylesheet" href="/static/catalogo.css?v=controls-layout-2">{% endif %}{% if cabecera_gestion %}<link rel="stylesheet" href="/static/gestion.css?v=controls-layout-2">{% endif %}{% endblock %}
 
 {% block content %}
 <main class="page-wrap login-wrap">
@@ -20,6 +21,14 @@
         <p class="error-message login-error" id="loginError"></p>
         <p class="note"><a href="/recuperar-contrasena">¿Has olvidado tu contraseña?</a></p>
         <p class="note">¿No tienes cuenta? <a href="/registro">Regístrate</a></p>
+        {% if es_invitado %}
+        <p class="note logged-state">Ya estás conectado como <strong>Invitado</strong>. <a href="/inicio">Volver a la aplicación</a></p>
+        {% elif not user_name %}
+        <form action="/invitado" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="button guest-button" type="submit">Entrar como invitado</button>
+        </form>
+        {% endif %}
     </section>
 </main>
 {% endblock %}
