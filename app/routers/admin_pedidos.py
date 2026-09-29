@@ -3,7 +3,9 @@ from datetime import datetime
 from math import ceil, isfinite
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field, field_validator
+from fastapi.responses import RedirectResponse
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -40,15 +42,27 @@ class PedidoDatos(BaseModel):
         if not value.strip(): raise ValueError("Campo obligatorio")
         return value.strip()
 
+    @field_validator("metodo_pago")
+    @classmethod
+    def solo_efectivo(cls, value):
+        if value != MetodoPago.EFECTIVO:
+            raise ValueError("Los pedidos administrativos solo admiten pago en efectivo")
+        return value
+
 
 class PedidoContactoDatos(BaseModel):
+    nombre_comprador: str | None = Field(default=None, min_length=1, max_length=100)
+    apellidos_comprador: str | None = Field(default=None, min_length=1, max_length=150)
+    email_comprador: EmailStr | None = None
     direccion_envio: str = Field(min_length=1, max_length=500)
     direccion_facturacion: str = Field(min_length=1, max_length=500)
-    telefono: str = Field(default="", max_length=50)
+    telefono: str = Field(default="", max_length=30, pattern=r"^[+0-9 ()-]*$")
 
-    @field_validator("direccion_envio", "direccion_facturacion")
+    @field_validator("nombre_comprador", "apellidos_comprador", "direccion_envio", "direccion_facturacion")
     @classmethod
     def direccion_requerida(cls, value):
+        if value is None:
+            return None
         if not value.strip(): raise ValueError("Campo obligatorio")
         return value.strip()
 
@@ -56,15 +70,16 @@ class PedidoContactoDatos(BaseModel):
 def serializar(pedido):
     return {**{campo: getattr(pedido, campo) for campo in (
         "id", "codigo_pedido", "usuario_id", "fecha", "subtotal", "descuento", "impuesto", "coste_entrega", "total",
+        "nombre_comprador", "apellidos_comprador", "email_comprador",
         "direccion_envio", "direccion_facturacion", "telefono", "fecha_creacion", "fecha_actualizacion", "reembolso_pendiente")},
         "estado": pedido.estado.value, "metodo_pago": pedido.metodo_pago.value,
-        "puede_editar_datos": pedido.estado == EstadoPedido.PREPARACION,
+        "puede_editar_datos": True,
         "puede_editar": bool(pedido.usuario_id and pedido.estado == EstadoPedido.PREPARACION
             and not pedido.stripe_session_id and not any(linea.cancelado for linea in pedido.items)
             and all(sub.estado == EstadoSubpedido.PREPARACION for sub in pedido.subpedidos)),
-        "comprador": {"nombre": (pedido.usuario.nombre + " " + pedido.usuario.apellidos) if pedido.usuario else
-                      (pedido.nombre_comprador + " " + pedido.apellidos_comprador).strip(),
-                      "email": pedido.usuario.email if pedido.usuario else pedido.email_comprador},
+        "comprador": {"nombre": ((pedido.nombre_comprador + " " + pedido.apellidos_comprador).strip()
+                                  or ((pedido.usuario.nombre + " " + pedido.usuario.apellidos) if pedido.usuario else "")),
+                      "email": pedido.email_comprador or (pedido.usuario.email if pedido.usuario else "")},
         "lineas": [{"id": linea.id, "producto_id": linea.producto_id, "nombre": linea.producto.nombre,
                     "tienda_id": linea.producto.tienda_id, "cantidad": linea.cantidad,
                     "precio_unitario": linea.precio_unitario, "total": linea.total, "cancelado": linea.cancelado} for linea in pedido.items]}
@@ -78,12 +93,14 @@ def obtener(db, pedido_id):
 
 @router.get("/panel")
 def panel(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     _obtener_admin_actual(request, db)
     compradores = db.query(Usuario).filter(Usuario.rol == RolUsuario.COMPRADOR).order_by(Usuario.nombre).all()
     productos = db.query(Producto).order_by(Producto.nombre).all()
     return pagina_publica(request, db, "admin_pedidos.html", {
         "compradores": compradores, "productos_pedido": productos,
-        "estados_pedido": list(EstadoPedido), "metodos_pago": list(MetodoPago),
+        "estados_pedido": list(EstadoPedido), "metodos_pago": [MetodoPago.EFECTIVO],
     })
 
 
@@ -113,8 +130,9 @@ def editar_datos(pedido_id: int, datos: PedidoContactoDatos, request: Request, d
     pedido = db.query(Pedido).filter_by(id=pedido_id).with_for_update().first()
     if pedido is None:
         raise HTTPException(404, "Pedido no encontrado")
-    if pedido.estado != EstadoPedido.PREPARACION:
-        raise HTTPException(409, "Los datos de entrega solo pueden editarse antes del envío")
+    if datos.nombre_comprador is not None: pedido.nombre_comprador = datos.nombre_comprador
+    if datos.apellidos_comprador is not None: pedido.apellidos_comprador = datos.apellidos_comprador
+    if datos.email_comprador is not None: pedido.email_comprador = str(datos.email_comprador)
     pedido.direccion_envio = datos.direccion_envio
     pedido.direccion_facturacion = datos.direccion_facturacion
     pedido.telefono = datos.telefono.strip()
@@ -149,11 +167,22 @@ def guardar(db, pedido, datos):
     comprador = db.get(Usuario, datos.usuario_id)
     if comprador is None or comprador.rol != RolUsuario.COMPRADOR:
         raise HTTPException(422, "El pedido debe pertenecer a un comprador")
+    if pedido is None:
+        nombre_comprador, apellidos_comprador, email_comprador = comprador.nombre, comprador.apellidos, comprador.email
     if len({linea.producto_id for linea in datos.lineas}) != len(datos.lineas):
         raise HTTPException(422, "Cada producto debe aparecer una sola vez; ajusta su cantidad")
+    productos = {producto.id: producto for producto in db.query(Producto).filter(
+        Producto.id.in_(sorted(linea.producto_id for linea in datos.lineas))
+    ).with_for_update().all()}
+    anteriores = {}
+    if pedido is not None:
+        for linea in pedido.items:
+            if not linea.cancelado:
+                anteriores[linea.producto_id] = anteriores.get(linea.producto_id, 0) + linea.cantidad
+    nuevas = {linea.producto_id: linea.cantidad for linea in datos.lineas}
     lineas = []
     for linea in datos.lineas:
-        producto = db.get(Producto, linea.producto_id)
+        producto = productos.get(linea.producto_id)
         if producto is None: raise HTTPException(422, "Producto no encontrado")
         if not producto.tienda.compra_online:
             raise HTTPException(409, "Esta tienda es solo un catálogo visual; sus productos no se pueden incluir en pedidos")
@@ -171,15 +200,36 @@ def guardar(db, pedido, datos):
     if pedido is None:
         pedido = Pedido()
         db.add(pedido)
-    for campo, valor in datos.model_dump(exclude={"lineas"}).items(): setattr(pedido, campo, valor)
+        pedido.nombre_comprador = nombre_comprador
+        pedido.apellidos_comprador = apellidos_comprador
+        pedido.email_comprador = email_comprador
+    for campo, valor in datos.model_dump(exclude={"lineas"}, exclude_none=True).items(): setattr(pedido, campo, valor)
     pedido.items = lineas
     pedido.subtotal = subtotal
     pedido.total = total
     pedido.fecha_actualizacion = datetime.utcnow()
     try:
+        # Reserva solo el incremento y devuelve cualquier reducción. Las
+        # actualizaciones condicionales evitan vender stock negativo.
+        for producto_id in sorted(set(anteriores) | set(nuevas)):
+            diferencia = nuevas.get(producto_id, 0) - anteriores.get(producto_id, 0)
+            if diferencia > 0:
+                reservado = db.execute(update(Producto).where(
+                    Producto.id == producto_id,
+                    Producto.disponible.is_(True),
+                    Producto.stock >= diferencia,
+                ).values(stock=Producto.stock - diferencia))
+                if reservado.rowcount != 1:
+                    raise HTTPException(409, "No hay stock suficiente para el pedido")
+            elif diferencia < 0:
+                db.execute(update(Producto).where(Producto.id == producto_id).values(
+                    stock=Producto.stock - diferencia))
         from app.estado_pedidos import sincronizar_subpedidos
         sincronizar_subpedidos(db, pedido)
         db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
     except IntegrityError:
         db.rollback()
         raise HTTPException(409, "El código de pedido ya existe o hay datos relacionados incompatibles")
@@ -204,5 +254,14 @@ def editar(pedido_id: int, datos: PedidoDatos, request: Request, db: Session = D
 def eliminar(pedido_id: int, request: Request, db: Session = Depends(get_db)):
     _obtener_admin_actual(request, db)
     _validar_csrf(request)
-    db.delete(obtener(db, pedido_id))
+    pedido = db.query(Pedido).filter_by(id=pedido_id).with_for_update().first()
+    if pedido is None:
+        raise HTTPException(404, "Pedido no encontrado")
+    cantidades = {}
+    for linea in pedido.items:
+        if not linea.cancelado:
+            cantidades[linea.producto_id] = cantidades.get(linea.producto_id, 0) + linea.cantidad
+    for producto_id, cantidad in sorted(cantidades.items()):
+        db.execute(update(Producto).where(Producto.id == producto_id).values(stock=Producto.stock + cantidad))
+    db.delete(pedido)
     db.commit()

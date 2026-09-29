@@ -49,7 +49,7 @@
         const note = document.getElementById('pedidoSoloLectura');
         note.hidden = order.puede_editar;
         note.textContent = order.puede_editar_datos
-            ? 'Puedes editar las direcciones y el teléfono. Los productos e importes quedan protegidos por el pago o el reparto.'
+            ? 'Puedes editar los datos de contacto, entrega y facturación. Los productos e importes quedan protegidos por el pago o el reparto.'
             : 'Este pedido ya no admite cambios de datos. Puedes consultar todos sus detalles.';
         for (const field of form.elements) {
             if (field.name && field.name in order) field.value = order[field.name] ?? '';
@@ -59,7 +59,7 @@
         for (const control of form.querySelectorAll('input:not([type=hidden]), select, [data-remove-line]')) {
             if (control.name !== 'estado') {
                 control.disabled = !(order.puede_editar ||
-                    (order.puede_editar_datos && ['direccion_envio', 'direccion_facturacion', 'telefono'].includes(control.name)));
+                    (order.puede_editar_datos && ['nombre_comprador', 'apellidos_comprador', 'email_comprador', 'direccion_envio', 'direccion_facturacion', 'telefono'].includes(control.name)));
             }
         }
         document.getElementById('agregarLinea').hidden = !order.puede_editar;
@@ -191,6 +191,9 @@
                 await accountRequest('/admin/pedidos/' + id, 'PUT', data);
             } else {
                 await accountRequest('/admin/pedidos/' + id + '/datos', 'PATCH', {
+                    nombre_comprador: data.nombre_comprador,
+                    apellidos_comprador: data.apellidos_comprador,
+                    email_comprador: data.email_comprador,
                     direccion_envio: data.direccion_envio,
                     direccion_facturacion: data.direccion_facturacion,
                     telefono: data.telefono || '',

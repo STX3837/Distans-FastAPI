@@ -12,7 +12,8 @@ document.querySelectorAll('.rating-form').forEach(form => {
                 headers: {'Content-Type': 'application/json', 'X-CSRF-Token': token},
                 body: JSON.stringify({puntuacion: Number(form.elements.puntuacion.value)}),
             });
-            if (!response.ok) throw new Error('No se pudo guardar la valoración. Inténtalo de nuevo.');
+            const data = await readApiResponse(response);
+            if (!response.ok) throw new Error(apiErrorMessage(data && data.detail, 'No se pudo guardar la valoración. Inténtalo de nuevo.'));
             window.location.reload();
         } catch (error) {
             status.textContent = error.message;

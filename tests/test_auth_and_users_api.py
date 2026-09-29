@@ -49,6 +49,23 @@ def test_registro_email_duplicado_devuelve_400(client, user_factory):
     assert "email" in response.json()["detail"].lower()
 
 
+def test_email_se_normaliza_para_evitar_duplicados_y_permitir_login(client, user_factory):
+    user_factory(email="normalizado@example.com", contrasena="clave12345")
+    login = client.post("/api/login", json={
+        "email": "  NORMALIZADO@EXAMPLE.COM ", "contrasena": "clave12345",
+    })
+    assert login.status_code == 200
+
+    client.cookies.clear()
+    duplicate = client.post("/api/registro", json={
+        "nombre": "Otro", "apellidos": "Usuario",
+        "email": "NORMALIZADO@EXAMPLE.COM", "telefono": "600123123",
+        "direccion": "Calle Sol 1", "ciudad": "Madrid", "codigo_postal": "28001",
+        "rol": "comprador", "contrasena": "clave12345",
+    })
+    assert duplicate.status_code == 400
+
+
 def test_login_exitoso_y_bienvenida_con_sesion(client, user_factory):
     user = user_factory(
         nombre="Carlos",

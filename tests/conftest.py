@@ -12,6 +12,7 @@ from app import crud
 from app.database import get_db
 from app.models import Base, Usuario, RestablecimientoContrasena
 from app.password_reset import router as password_reset_router
+from app.access_control import RequerirAccesoMiddleware
 from app.routers import auth, users, catalogo, gestion, admin_pedidos, favoritos, pedidos, planes
 from app.schemas import RolUsuario as RolUsuarioSchema
 from app.schemas import UsuarioCreate
@@ -39,6 +40,7 @@ def db_session() -> Generator[Session, None, None]:
 def app(db_session: Session) -> FastAPI:
     """App de pruebas con dependencias sobreescritas y middleware de sesión."""
     test_app = FastAPI()
+    test_app.add_middleware(RequerirAccesoMiddleware)
     test_app.add_middleware(SessionMiddleware, secret_key="test-session-secret")
 
     def override_get_db() -> Generator[Session, None, None]:
@@ -69,7 +71,11 @@ def client(app: FastAPI) -> TestClient:
                     headers.setdefault("X-CSRF-Token", token)
                 kwargs["headers"] = headers
             return super().request(method, url, **kwargs)
-    return CsrfClient(app)
+    test_client = CsrfClient(app)
+    # La mayoría de pruebas ejercitan la aplicación como invitado. Las pruebas
+    # de la puerta de acceso crean un cliente limpio de forma explícita.
+    test_client.post("/invitado")
+    return test_client
 
 
 @pytest.fixture(scope="function")

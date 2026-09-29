@@ -38,6 +38,32 @@ def test_registration_requires_contact_and_address(client, db_session, field, in
     assert db_session.query(Usuario).count() == 0
 
 
+@pytest.mark.parametrize(("field", "invalid"), [
+    ("nombre", "N" * 51),
+    ("apellidos", "A" * 101),
+    ("telefono", "123"),
+    ("telefono", "600.123.123"),
+    ("direccion", "D" * 201),
+    ("ciudad", "C" * 81),
+    ("codigo_postal", "1"),
+    ("codigo_postal", "X" * 13),
+])
+def test_registration_rejects_unreasonable_account_fields(client, db_session, field, invalid):
+    payload = registration()
+    payload[field] = invalid
+    response = client.post("/api/registro", json=payload)
+    assert response.status_code == 422
+    assert any(error["loc"][-1] == field for error in response.json()["detail"])
+    assert db_session.query(Usuario).count() == 0
+
+
+def test_profile_update_enforces_same_account_limits(client, user_factory):
+    user = user_factory()
+    assert client.post("/api/login", json={"email": user.email, "contrasena": "clave12345"}).status_code == 200
+    assert client.put("/usuarios/me", json={"nombre": "N" * 51}).status_code == 422
+    assert client.put("/usuarios/me", json={"telefono": "123"}).status_code == 422
+
+
 def test_payment_data_requires_session(client):
     assert client.get("/usuarios/me/datos-pago").status_code == 401
 

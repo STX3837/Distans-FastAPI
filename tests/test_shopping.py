@@ -28,7 +28,8 @@ def test_buyer_header_on_shopping_pages_and_excluded_from_account_pages(client, 
         assert 'class="market-header"' in response.text
         assert 'href="/inicio?tab=tiendas"' in response.text
         assert 'href="/inicio?q=&amp;tab=productos"' in response.text
-    for path in ("/", "/login", "/registro", "/recuperar-contrasena"):
+    assert 'class="market-header"' in client.get("/login").text
+    for path in ("/", "/registro", "/recuperar-contrasena"):
         assert 'class="market-header"' not in client.get(path).text
     buyer = user_factory(email="headerbuyer@example.com")
     client.post("/api/login", json={"email": buyer.email, "contrasena": "clave12345"})
@@ -74,10 +75,36 @@ def test_guest_cart_quantity_stock_csrf_and_isolation(client, app, product):
     assert added.status_code == 200 and added.json()["total"] == 30
     assert client.post(url, json={"cantidad": 4}, headers=headers(client)).status_code == 409
     assert client.get("/api/carrito").json()["cantidad"] == 2
-    assert TestClient(app).get("/api/carrito").json()["cantidad"] == 0
+    isolated = TestClient(app)
+    isolated.post("/invitado")
+    assert isolated.get("/api/carrito").json()["cantidad"] == 0
     assert "25 % de descuento" in client.get("/carrito").text
     assert client.put(url, json={"cantidad": 3}, headers=headers(client)).json()["total"] == 45
     assert client.delete(url, headers=headers(client)).json()["cantidad"] == 0
+
+
+def test_guest_gets_stable_cart_identity_before_first_item(client, product, db_session):
+    client.get('/inicio')
+    token = headers(client)
+    assert client.post(f'/api/carrito/productos/{product.id}', json={'cantidad': 1}, headers=token).status_code == 200
+    assert client.post(f'/api/carrito/productos/{product.id}', json={'cantidad': 1}, headers=token).status_code == 200
+    assert db_session.query(Carrito).count() == 1
+    assert client.get('/api/carrito').json()['cantidad'] == 2
+
+
+def test_guest_reentry_keeps_the_same_cart(client, product, db_session):
+    token = headers(client)
+    assert client.post(f'/api/carrito/productos/{product.id}', json={'cantidad': 2}, headers=token).status_code == 200
+    cart = db_session.query(Carrito).filter_by(usuario_id=None).one()
+    session_id = cart.sesion
+
+    login = client.get('/login')
+    assert 'Ya estás conectado como' in login.text
+    assert 'action="/invitado"' not in login.text
+    assert client.post('/invitado', follow_redirects=False).status_code == 303
+
+    assert client.get('/api/carrito').json()['cantidad'] == 2
+    assert db_session.query(Carrito).filter_by(usuario_id=None).one().sesion == session_id
 
 
 def test_buyer_cart_persists_and_other_user_cannot_see_it(client, app, product, user_factory, db_session):
@@ -109,6 +136,7 @@ def test_guest_cart_is_stored_with_dates_and_multiple_stores(client, product, db
                      categoria=Categoria.HOGAR_BRICOLAJE, stock=10)
     db_session.add(other)
     db_session.commit()
+    client.post("/invitado")
     client.get("/inicio")
     for item, quantity in ((product, 2), (other, 3)):
         assert client.post(f"/api/carrito/productos/{item.id}", json={"cantidad": quantity},
