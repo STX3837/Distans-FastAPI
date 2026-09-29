@@ -108,7 +108,6 @@ class ProductoDatos(BaseModel):
     descripcion: str = Field(default="", max_length=5000)
     precio: float = Field(gt=0, allow_inf_nan=False)
     precio_oferta: float | None = Field(default=None, ge=0, allow_inf_nan=False)
-    modalidad_compra: str = Field(default="presencial", pattern="^(online|presencial)$")
     marca: str = Field(default="", max_length=160)
     categoria: Categoria
     imagen: str = Field(default="", max_length=1000)
@@ -164,6 +163,9 @@ def guardar_tienda(db, usuario, tienda, datos):
         tienda.coordenadas = CoordenadasTienda(latitud=datos.latitud, longitud=datos.longitud)
     else:
         tienda.coordenadas.latitud, tienda.coordenadas.longitud = datos.latitud, datos.longitud
+    modalidad_compra = "online" if tienda.compra_online else "presencial"
+    for producto in tienda.productos:
+        producto.modalidad_compra = modalidad_compra
     db.commit()
     return datos_tienda(tienda)
 
@@ -225,6 +227,7 @@ def guardar_producto(db, tienda, producto, datos):
         producto = Producto(tienda_id=tienda.id)
         db.add(producto)
     for key, value in datos.model_dump().items(): setattr(producto, key, value)
+    producto.modalidad_compra = "online" if tienda.compra_online else "presencial"
     producto.fecha_actualizacion = datetime.utcnow()
     db.commit()
     return producto_publico(producto)

@@ -106,50 +106,44 @@ Una vez iniciados los contenedores:
 - DocumentaciÃ³n alternativa: <http://localhost:8001/redoc>
 - Bandeja de correo de desarrollo: <http://localhost:8025>
 
-## Entorno de demostraciÃ³n
+## Entorno de demostración comparable
 
-El proyecto incluye un generador autosuficiente de datos de prueba. Puede ejecutarse inmediatamente despuÃ©s de levantar una base vacÃ­a y no necesita cuentas creadas previamente.
+El proyecto incluye una fixture equivalente a la de DISTANS-Django para que las pruebas de carga partan del mismo volumen y de los mismos casos funcionales:
 
 ```bash
 docker compose exec web python -m scripts.seed_catalogo
 ```
 
-El comando es aditivo e idempotente: puede ejecutarse varias veces sin eliminar ni duplicar los datos ya creados. En concreto:
+El comando es repetible y restablece exclusivamente la fixture demo. Crea:
 
-- conserva todas las cuentas y todos los datos existentes;
-- crea un administrador, un comprador y diez vendedores;
-- asigna exactamente una tienda a cada vendedor;
-- crea diez comercios geolocalizados en Carmona y Sevilla y treinta productos variados;
-- incorpora imÃ¡genes de muestra, ofertas, stock, favoritos, valoraciones y comentarios;
-- aÃ±ade un pedido entregado para probar los historiales y paneles;
-- crea exclusivamente los elementos de demostraciÃ³n que todavÃ­a falten.
+- 11 usuarios: un administrador, dos compradores y ocho vendedores.
+- 8 tiendas geolocalizadas: cinco Premium y tres Freemium.
+- 24 productos con los mismos nombres, categorías, precios, ofertas y stock final que Django.
+- 5 pedidos en preparación, enviado, entregado y cancelado.
+- Un carrito, un producto favorito y una tienda favorita.
+- 72 visitas de producto y 56 visitas de tienda.
 
-El antiguo argumento `--reset` se conserva temporalmente por compatibilidad, pero ya no elimina informaciÃ³n. El script estÃ¡ destinado a desarrollo y evaluaciÃ³n.
+Las imágenes se dejan vacías para utilizar los recursos predeterminados de la interfaz.
 
 ### Credenciales de prueba
 
-Todas las cuentas siguientes utilizan la contraseÃ±a `DistansDemo2026!`:
+Todas las cuentas utilizan la contraseña `DemoDistans2026!`:
 
 | Perfil | Correo | Contenido asociado |
 |---|---|---|
-| Administrador | `demo.admin@distans-demo.com` | Panel global |
-| Comprador | `demo.comprador@distans-demo.com` | Favoritos, reseÃ±as y pedido de muestra |
-| Vendedor 1 | `demo.vendedor1@distans-demo.com` | Comercio Carmona |
-| Vendedor 2 | `demo.vendedor2@distans-demo.com` | ArtesanÃ­a AlcÃ¡zar |
-| Vendedor 3 | `demo.vendedor3@distans-demo.com` | Tecno CampiÃ±a |
-| Vendedor 4 | `demo.vendedor4@distans-demo.com` | Verde Alcores |
-| Vendedor 5 | `demo.vendedor5@distans-demo.com` | LibrerÃ­a Puerta Sevilla |
-| Vendedor 6 | `demo.vendedor6@distans-demo.com` | Sabores de Triana (Sevilla) |
-| Vendedor 7 | `demo.vendedor7@distans-demo.com` | Bienestar NerviÃ³n (Sevilla) |
-| Vendedor 8 | `demo.vendedor8@distans-demo.com` | Flores de la Macarena (Sevilla) |
-| Vendedor 9 | `demo.vendedor9@distans-demo.com` | Cultura Alameda (Sevilla) |
-| Vendedor 10 | `demo.vendedor10@distans-demo.com` | TecnologÃ­a Sevilla Este (Sevilla) |
+| Administrador | `admin@demo.example.com` | Panel global |
+| Comprador | `comprador@demo.example.com` | Carrito, favoritos y pedidos 1, 3 y 5 |
+| Segundo comprador | `comprador2@demo.example.com` | Pedidos 2 y 4 |
+| Vendedor | `libreria@demo.example.com` | Librería Horizonte Demo |
+| Vendedor | `tecnologia@demo.example.com` | Tecnología Centro Demo |
+| Vendedor | `jardin@demo.example.com` | Jardín del Barrio Demo |
+| Vendedor | `mercado@demo.example.com` | Mercado Artesano Demo |
+| Vendedor | `hogar@demo.example.com` | Hogar Alcalá Demo |
+| Vendedor | `sevilla-triana@demo.example.com` | Artesanía Triana Demo |
+| Vendedor | `sevilla-centro@demo.example.com` | Librería Sevilla Centro Demo |
+| Vendedor | `sevilla-nervion@demo.example.com` | Flores Nervión Demo |
 
-La contraseÃ±a puede personalizarse sin editar el cÃ³digo:
-
-```bash
-docker compose exec -e DEMO_PASSWORD="OtraClaveDePruebaSegura!" web python -m scripts.seed_catalogo
-```
+Para que los resultados sean comparables, ejecuta el seed antes de cada serie de mediciones y no cambies la contraseña durante las pruebas de carga.
 
 ## ConfiguraciÃ³n
 
@@ -242,6 +236,82 @@ docker compose down -v
 ```
 
 PostgreSQL utiliza el volumen `fastapi_postgres_data`. La opciÃ³n `down -v` lo elimina de forma irreversible.
+
+## Pruebas de carga con Locust
+
+La batería de `load_tests/locustfile.py` reproduce, en la medida que permiten las rutas de FastAPI, los mismos perfiles, pesos, etapas y umbrales usados en DISTANS-Django. Solo existen tres escenarios: `baseline`, `stress` y `write`.
+
+No deben ejecutarse contra producción. Las pruebas generan sesiones, visitas y carritos; `write` también crea productos temporales y modifica pedidos controlados.
+
+### Preparación
+
+```powershell
+docker compose up -d --build
+docker compose exec web python -m scripts.seed_catalogo
+python -m venv .load-venv
+.\.load-venv\Scripts\python.exe -m pip install -r requirements-load.txt
+```
+
+La aplicación FastAPI debe responder en `http://localhost:8001`. La instalación de Locust solo debe repetirse cuando cambie `requirements-load.txt`.
+
+### Baseline
+
+Es la referencia principal para comparar ambas aplicaciones. Dura cuatro minutos y usa 10 usuarios durante el primer minuto, 25 durante los dos siguientes y 10 durante el último:
+
+```powershell
+$env:LOAD_STAGES="baseline"
+.\.load-venv\Scripts\locust.exe -f load_tests\locustfile.py --headless `
+  --host http://localhost:8001 `
+  --csv load_results\baseline `
+  --html load_results\baseline.html
+```
+
+### Stress
+
+Dura seis minutos y pasa por 25, 75, 150 y finalmente 25 usuarios:
+
+```powershell
+$env:LOAD_STAGES="stress"
+.\.load-venv\Scripts\locust.exe -f load_tests\locustfile.py --headless `
+  --host http://localhost:8001 `
+  --csv load_results\stress `
+  --html load_results\stress.html
+```
+
+### Write
+
+Mide operaciones autenticadas de escritura. Cada usuario crea un producto temporal, modifica repetidamente su precio, avanza uno de diez pedidos aislados y elimina el producto al terminar. Antes de cada ejecución hay que restablecer esos pedidos:
+
+```powershell
+docker compose exec web python -m scripts.prepare_load_test
+$env:LOAD_STAGES="write"
+.\.load-venv\Scripts\locust.exe -f load_tests\locustfile.py --headless `
+  --host http://localhost:8001 `
+  --csv load_results\write `
+  --html load_results\write.html
+```
+
+`write` dura tres minutos y utiliza 2, 5 y finalmente 2 usuarios. `prepare_load_test` es idempotente, restaura los diez pedidos `LOAD-WRITE-*` y no modifica el stock. Una finalización normal elimina los productos `LOADTEST-*` automáticamente.
+
+Los escenarios `baseline` y `stress` mantienen la misma mezcla que Django: 70 % de visitantes, 20 % de compradores y 10 % de vendedores. Las credenciales pueden sobrescribirse con `LOAD_BUYER_EMAIL`, `LOAD_SELLER_EMAIL` y `LOAD_PASSWORD`.
+
+### Interfaz visual
+
+Para ver estadísticas y gráficas en tiempo real:
+
+```powershell
+$env:LOAD_STAGES="baseline"
+.\.load-venv\Scripts\locust.exe -f load_tests\locustfile.py `
+  --host http://localhost:8001 `
+  --web-host 127.0.0.1 `
+  --web-port 8089
+```
+
+Abre `http://localhost:8089` y pulsa **Start swarming**. Los informes HTML generados pueden abrirse directamente sin mantener Locust activo.
+
+La ejecución devuelve código 1 si falla más del 1 % de las peticiones, si el p95 global supera 1200 ms o si no se registra ninguna petición. Los límites se pueden cambiar con `LOAD_MAX_FAILURE_RATIO` y `LOAD_MAX_P95_MS`.
+
+Para una comparación justa deben mantenerse el mismo hardware, datos, etapas y generador de carga. Se recomiendan al menos cinco repeticiones alternando el orden Django/FastAPI y comparar la mediana, conservando los HTML y CSV.
 
 ## Estado y alcance acadÃ©mico
 

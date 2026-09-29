@@ -33,6 +33,8 @@ def test_seller_store_product_crud_and_pages(client, user_factory):
     assert response.status_code == 201
     product = response.json()
     assert product["descuento"] == 25
+    assert product["modalidad_compra"] == "presencial"
+    assert 'name="modalidad_compra"' not in client.get(f'/gestion/tiendas/{store["id"]}/productos').text
     assert client.get(base).json()["categorias"] == [Categoria.HOGAR_BRICOLAJE.value]
     for path in ("/mi-tienda", "/gestion/tiendas/nueva", f'/gestion/tiendas/{store["id"]}', f'/gestion/tiendas/{store["id"]}/editar', f'/gestion/tiendas/{store["id"]}/productos', f'/gestion/tiendas/{store["id"]}/estadisticas'):
         page = client.get(path)
@@ -47,6 +49,42 @@ def test_seller_store_product_crud_and_pages(client, user_factory):
     assert client.delete(f'/api/gestion/productos/{product["id"]}', headers=h).status_code == 200
     assert client.get(base).json()["categorias"] == []
     assert client.delete(base, headers=h).status_code == 200
+
+
+def test_product_purchase_mode_is_derived_from_store_plan(client, user_factory):
+    seller = user_factory(email="mode-seller@example.com", rol=RolUsuario.VENDEDOR)
+    seller_headers = login(client, seller)
+    store = client.post("/api/gestion/tiendas", json=STORE, headers=seller_headers).json()
+    base = f'/api/gestion/tiendas/{store["id"]}'
+
+    physical = client.post(
+        base + "/productos",
+        json={**PRODUCT, "modalidad_compra": "online"},
+        headers=seller_headers,
+    )
+    assert physical.status_code == 201
+    assert physical.json()["modalidad_compra"] == "presencial"
+
+    admin = user_factory(email="mode-admin@example.com", rol=RolUsuario.ADMIN)
+    admin_headers = login(client, admin)
+    premium_store = {
+        **STORE,
+        "plan": "Premium",
+        "suscripcion_activa": True,
+        "pasarela_activa": True,
+        "vendedor_id": seller.id,
+    }
+    assert client.put(base, json=premium_store, headers=admin_headers).status_code == 200
+
+    updated = client.get(f'/api/gestion/productos/{physical.json()["id"]}').json()
+    assert updated["modalidad_compra"] == "online"
+    online = client.post(
+        base + "/productos",
+        json={**PRODUCT, "nombre": "Producto Premium", "modalidad_compra": "presencial"},
+        headers=admin_headers,
+    )
+    assert online.status_code == 201
+    assert online.json()["modalidad_compra"] == "online"
 
 
 def test_ownership_admin_and_buyer_permissions(client, user_factory):

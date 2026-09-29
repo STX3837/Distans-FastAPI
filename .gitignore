@@ -23,3 +23,5 @@ db.sqlite3
 *.swp
 # Capturas locales de verificación
 /artifacts/
+/.load-venv/
+/load_results/
