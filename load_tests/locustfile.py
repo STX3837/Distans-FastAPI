@@ -26,7 +26,11 @@ SMOKE_SECONDS = int(os.getenv("LOAD_SMOKE_SECONDS", "0"))
 SMOKE_USERS = int(os.getenv("LOAD_SMOKE_USERS", "2"))
 
 PRODUCT_RE = re.compile(r'href=["\']/productos/(\d+)["\']')
-CART_PRODUCT_RE = re.compile(r'data-add-cart=["\'](\d+)["\']')
+# Solo imita controles que un navegador permitiría pulsar. Las tarjetas mantienen
+# ``data-add-cart`` en botones deshabilitados para productos agotados o no disponibles.
+CART_PRODUCT_RE = re.compile(
+    r'<button(?=[^>]*\bdata-add-cart=["\'](\d+)["\'])(?![^>]*\bdisabled\b)[^>]*>'
+)
 SELLER_STORE_RE = re.compile(r'href=["\']/gestion/tiendas/(\d+)/productos["\']')
 ORDER_RE = re.compile(r'action=["\']/gestion/tiendas/(\d+)/pedidos/(\d+)/estado["\']')
 WRITE_USER_SEQUENCE = count()
@@ -106,8 +110,19 @@ class BrowseUser(DistansUser):
         if not self.cart_product_ids:
             return
         product_id = random.choice(self.cart_product_ids)
-        self.client.post(f"/api/carrito/productos/{product_id}", json={"cantidad": 1},
-                         headers=self.csrf_headers(), name="POST /api/carrito/productos/:id")
+        # Fijar la cantidad evita que una sesión acumule unidades durante toda la
+        # prueba y termine provocando un 409 legítimo al superar el stock.
+        with self.client.put(
+            f"/api/carrito/productos/{product_id}", json={"cantidad": 1},
+            headers=self.csrf_headers(), name="PUT /api/carrito/productos/:id",
+            catch_response=True,
+        ) as response:
+            if response.status_code != 200:
+                try:
+                    detail = response.json().get("detail", response.text[:200])
+                except ValueError:
+                    detail = response.text[:200]
+                response.failure(f"carrito rechazado ({response.status_code}): {detail}")
         self.client.get("/carrito", name="GET /carrito")
 
 
@@ -130,7 +145,7 @@ class BuyerUser(DistansUser):
 
     @task(2)
     def account(self):
-        self.client.get("/cuenta", name="GET /cuenta")
+        self.client.get("/usuarios/cuenta", name="GET /usuarios/cuenta")
 
     @task(3)
     def catalog(self):

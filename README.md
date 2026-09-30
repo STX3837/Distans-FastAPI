@@ -56,7 +56,7 @@ Las rutas se sirven desde `http://localhost:8001` en el entorno Docker local.
 | `/inicio` | Catálogo de productos, tiendas y mapa. |
 | `/productos/<id>`, `/tiendas/<id>` | Fichas públicas. |
 | `/carrito`, `/compra/carrito`, `/compra/<id>` | Carrito y compra. |
-| `/favoritos`, `/cuenta` | Favoritos y perfil. |
+| `/favoritos`, `/usuarios/cuenta` | Favoritos y perfil. |
 | `/pedidos/historial`, `/pedidos/seguimiento` | Historial y seguimiento. |
 | `/mi-tienda` | Entrada al panel del vendedor. |
 | `/gestion/tiendas/<id>` | Panel de una tienda. |
