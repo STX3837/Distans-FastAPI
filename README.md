@@ -369,9 +369,13 @@ Locust ofrece `baseline`, `stress` y `write`. No deben ejecutarse contra producc
 #### 1. Preparar la aplicación y los datos
 
 ```powershell
-docker compose up -d --build
+docker compose -f docker-compose.yml -f docker-compose.load.yml up -d --build
 docker compose exec web python -m scripts.seed_catalogo
 ```
+
+El segundo archivo de Compose ejecuta Uvicorn con tres workers y sin recarga
+automática exclusivamente para las pruebas de carga. El arranque habitual con
+`docker compose up` conserva el modo de desarrollo con `--reload`.
 
 #### 2. Instalar Locust
 
