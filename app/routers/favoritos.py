@@ -1,7 +1,8 @@
 """Favoritos persistentes de compradores (RF30)."""
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
 from app.models import Producto, ProductoFavorito, RolUsuario, Tienda, TiendaFavorita, Usuario
@@ -49,6 +50,8 @@ def listar(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/favoritos", response_class=HTMLResponse)
 def pagina(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     return pagina_publica(request, db, "favoritos.html", resumen(db, comprador(request, db)))
 
 
@@ -60,7 +63,14 @@ def cambiar(request, db, modelo, clave, entidad, id_objeto, guardar):
         raise HTTPException(404, "Elemento no encontrado")
     favorito = db.get(modelo, (usuario.id, id_objeto))
     if guardar and favorito is None:
-        db.add(modelo(usuario_id=usuario.id, **{clave: id_objeto}))
+        # El PUT sigue siendo idempotente si dos peticiones insertan la misma
+        # clave compuesta simultáneamente.
+        try:
+            with db.begin_nested():
+                db.add(modelo(usuario_id=usuario.id, **{clave: id_objeto}))
+                db.flush()
+        except IntegrityError:
+            pass
     elif not guardar and favorito is not None:
         db.delete(favorito)
     db.commit()

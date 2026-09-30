@@ -4,10 +4,9 @@ async function accountRequest(url, method = 'GET', body) {
     const token = getCookieValue('csrf_token');
     if (token) headers['X-CSRF-Token'] = token;
     const response = await fetch(url, {method, headers, body: body === undefined ? undefined : JSON.stringify(body)});
-    const data = response.status === 204 ? null : await response.json();
+    const data = await readApiResponse(response);
     if (!response.ok) {
-        const detail = data.detail;
-        throw new Error(Array.isArray(detail) ? detail.map(e => e.loc.slice(1).join('.') + ': ' + e.msg).join('; ') : detail || 'No se pudo completar la operación');
+        throw new Error(apiErrorMessage(data && data.detail));
     }
     return data;
 }

@@ -55,6 +55,20 @@ def test_cart_cleared_only_when_order_confirmed(client, db_session, product, str
     assert client.get('/api/carrito').json()['cantidad'] == 1
 
 
+def test_payment_keeps_items_added_while_checkout_is_open(client, db_session, product, stripe_gateway):
+    payload = start(client, product)
+    headers = {'X-CSRF-Token': client.cookies.get('csrf_token')}
+    assert client.post(f'/api/carrito/productos/{product.id}', json={'cantidad': 2}, headers=headers).status_code == 200
+    import re
+    payload['token'] = re.search(r'data-token="([^"]+)"', client.get('/compra/carrito').text)[1]
+    assert submit(client, payload).status_code == 200
+    assert client.put(f'/api/carrito/productos/{product.id}', json={'cantidad': 3}, headers=headers).status_code == 200
+    session = next(iter(stripe_gateway.sessions.values()))
+    session.update(status='complete', payment_status='paid')
+    assert event(client, session).status_code == 200
+    assert client.get('/api/carrito').json()['cantidad'] == 1
+
+
 def event(client, session, event_type='checkout.session.completed', valid=True):
     payload = json.dumps({'id': 'evt_test', 'object': 'event', 'type': event_type, 'data': {'object': session}})
     stamp = int(time.time())
@@ -161,7 +175,9 @@ def test_result_cannot_be_read_from_another_session(client, app, product):
     from fastapi.testclient import TestClient
     submit(client, start(client, product))
     with TestClient(app) as other:
-        assert other.get('/pago/resultado').status_code == 404
+        response = other.get('/pago/resultado', follow_redirects=False)
+        assert response.status_code == 303
+        assert response.headers['location'] == '/login'
 
 
 def test_return_confirms_paid_session_without_webhook(client, db_session, product, stripe_gateway):

@@ -3,6 +3,38 @@ from pathlib import Path
 from sqlalchemy import inspect, text
 
 
+MIGRATION_LOCK_ID = 447_697_821
+
+
+def actualizar_base(engine):
+    """Inicializa y migra una instalación bajo un bloqueo global de PostgreSQL."""
+    from app.models import Base, Tienda
+
+    lock = engine.connect()
+    try:
+        if engine.dialect.name == 'postgresql':
+            lock.execute(text('SELECT pg_advisory_lock(:lock_id)'), {'lock_id': MIGRATION_LOCK_ID})
+            lock.commit()
+        Base.metadata.create_all(bind=engine)
+        actualizar_pedidos(engine)
+        actualizar_cesta(engine)
+        actualizar_filtros(engine)
+        actualizar_visitas(engine)
+        with engine.connect() as connection:
+            duplicado = connection.execute(text(
+                'SELECT vendedor_id FROM tiendas GROUP BY vendedor_id HAVING COUNT(*) > 1 LIMIT 1'
+            )).first()
+        if not duplicado:
+            for index in Tienda.__table__.indexes:
+                if index.name == 'uq_tiendas_vendedor_id':
+                    index.create(bind=engine, checkfirst=True)
+    finally:
+        if engine.dialect.name == 'postgresql':
+            lock.execute(text('SELECT pg_advisory_unlock(:lock_id)'), {'lock_id': MIGRATION_LOCK_ID})
+            lock.commit()
+        lock.close()
+
+
 def ejecutar(engine, filename):
     sql = (Path(__file__).resolve().parents[1] / 'migrations' / filename).read_text(encoding='utf-8-sig')
     sql = '\n'.join(line for line in sql.splitlines() if not line.strip().startswith('--'))

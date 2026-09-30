@@ -17,7 +17,11 @@ def login(client, user):
 def test_seller_store_product_crud_and_pages(client, user_factory):
     seller = user_factory(rol=RolUsuario.VENDEDOR)
     h = login(client, seller)
-    assert client.get("/login", follow_redirects=False).headers["location"] == "/mi-tienda"
+    login_page = client.get("/login", follow_redirects=False)
+    assert login_page.status_code == 200
+    assert 'aria-label="Gestión de tienda"' in login_page.text
+    assert 'class="market-icon account-icon"' in login_page.text
+    assert '>Mi cuenta<' not in login_page.text
     assert client.post("/api/gestion/tiendas", json=STORE).status_code == 403
     response = client.post("/api/gestion/tiendas", json=STORE, headers=h)
     assert response.status_code == 201
@@ -29,6 +33,8 @@ def test_seller_store_product_crud_and_pages(client, user_factory):
     assert response.status_code == 201
     product = response.json()
     assert product["descuento"] == 25
+    assert product["modalidad_compra"] == "presencial"
+    assert 'name="modalidad_compra"' not in client.get(f'/gestion/tiendas/{store["id"]}/productos').text
     assert client.get(base).json()["categorias"] == [Categoria.HOGAR_BRICOLAJE.value]
     for path in ("/mi-tienda", "/gestion/tiendas/nueva", f'/gestion/tiendas/{store["id"]}', f'/gestion/tiendas/{store["id"]}/editar', f'/gestion/tiendas/{store["id"]}/productos', f'/gestion/tiendas/{store["id"]}/estadisticas'):
         page = client.get(path)
@@ -43,6 +49,42 @@ def test_seller_store_product_crud_and_pages(client, user_factory):
     assert client.delete(f'/api/gestion/productos/{product["id"]}', headers=h).status_code == 200
     assert client.get(base).json()["categorias"] == []
     assert client.delete(base, headers=h).status_code == 200
+
+
+def test_product_purchase_mode_is_derived_from_store_plan(client, user_factory):
+    seller = user_factory(email="mode-seller@example.com", rol=RolUsuario.VENDEDOR)
+    seller_headers = login(client, seller)
+    store = client.post("/api/gestion/tiendas", json=STORE, headers=seller_headers).json()
+    base = f'/api/gestion/tiendas/{store["id"]}'
+
+    physical = client.post(
+        base + "/productos",
+        json={**PRODUCT, "modalidad_compra": "online"},
+        headers=seller_headers,
+    )
+    assert physical.status_code == 201
+    assert physical.json()["modalidad_compra"] == "presencial"
+
+    admin = user_factory(email="mode-admin@example.com", rol=RolUsuario.ADMIN)
+    admin_headers = login(client, admin)
+    premium_store = {
+        **STORE,
+        "plan": "Premium",
+        "suscripcion_activa": True,
+        "pasarela_activa": True,
+        "vendedor_id": seller.id,
+    }
+    assert client.put(base, json=premium_store, headers=admin_headers).status_code == 200
+
+    updated = client.get(f'/api/gestion/productos/{physical.json()["id"]}').json()
+    assert updated["modalidad_compra"] == "online"
+    online = client.post(
+        base + "/productos",
+        json={**PRODUCT, "nombre": "Producto Premium", "modalidad_compra": "presencial"},
+        headers=admin_headers,
+    )
+    assert online.status_code == 201
+    assert online.json()["modalidad_compra"] == "online"
 
 
 def test_ownership_admin_and_buyer_permissions(client, user_factory):
@@ -108,6 +150,36 @@ def test_admin_cannot_assign_second_store_to_seller(client, user_factory):
     h = login(client, admin)
     assert client.post('/api/gestion/tiendas', json={**STORE, 'vendedor_id': seller.id}, headers=h).status_code == 409
     assert client.put(f'/api/gestion/tiendas/{second["id"]}', json={**STORE, 'vendedor_id': seller.id}, headers=h).status_code == 409
+
+
+def test_admin_store_form_only_lists_available_owner_and_current_owner(client, db_session, user_factory):
+    assigned = user_factory(email='assigned@example.com', rol=RolUsuario.VENDEDOR)
+    occupied = user_factory(email='occupied@example.com', rol=RolUsuario.VENDEDOR)
+    available = user_factory(email='available@example.com', rol=RolUsuario.VENDEDOR)
+    first = Tienda(nombre='Primera', vendedor_id=assigned.id)
+    second = Tienda(nombre='Segunda', vendedor_id=occupied.id)
+    db_session.add_all([first, second]); db_session.commit()
+    admin = user_factory(email='owners-admin@example.com', rol=RolUsuario.ADMIN)
+    login(client, admin)
+
+    new_page = client.get('/gestion/tiendas/nueva').text
+    assert available.email in new_page
+    assert assigned.email not in new_page and occupied.email not in new_page
+
+    edit_page = client.get(f'/gestion/tiendas/{first.id}/editar').text
+    assert assigned.email in edit_page and available.email in edit_page
+    assert occupied.email not in edit_page
+
+
+def test_admin_cannot_change_seller_role_while_store_is_assigned(client, db_session, user_factory):
+    seller = user_factory(email='role-owner@example.com', rol=RolUsuario.VENDEDOR)
+    db_session.add(Tienda(nombre='Tienda con propietario', vendedor_id=seller.id)); db_session.commit()
+    admin = user_factory(email='role-admin@example.com', rol=RolUsuario.ADMIN)
+    headers = login(client, admin)
+    response = client.put(f'/admin/usuarios/{seller.id}', json={'rol': 'comprador'}, headers=headers)
+    assert response.status_code == 409
+    db_session.refresh(seller)
+    assert seller.rol == RolUsuario.VENDEDOR
 
 
 def test_seller_cannot_read_foreign_public_or_management_data(client, user_factory):
@@ -182,6 +254,7 @@ def test_anonymous_store_and_product_visits_appear_in_seller_dashboard(client, d
     assert db_session.query(VisitaProducto).count() == 0
 
     assert client.post("/api/logout", headers=headers).status_code == 200
+    client.post("/invitado")
     assert client.get(f'/tiendas/{store["id"]}').status_code == 200
     assert client.get(f'/productos/{product["id"]}').status_code == 200
     assert client.get(f'/productos/{product["id"]}').status_code == 200

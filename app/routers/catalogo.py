@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import or_, case, func, text
+from sqlalchemy import and_, or_, case, func, text
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -113,7 +113,9 @@ def filtrar_radio(query, db, geo, columna=Producto.tienda_id):
 
 
 def contexto_publico(request, db):
-    contexto = {"user_name": None, "es_admin": False, "es_vendedor": False, "es_comprador": False, "puede_comprar": True}
+    es_invitado = bool(request.session.get("es_invitado")) and not request.session.get("usuario")
+    contexto = {"user_name": None, "es_admin": False, "es_vendedor": False, "es_comprador": False,
+                "es_invitado": es_invitado, "puede_comprar": es_invitado}
     if request.session.get("usuario"):
         try:
             usuario = _obtener_usuario_actual(request, db)
@@ -128,8 +130,14 @@ def contexto_publico(request, db):
             if error.status_code not in {401, 403, 404}: raise
             request.session.clear()
     token = request.session.setdefault("csrf_token", secrets.token_urlsafe(32))
+    if contexto["es_invitado"]:
+        # Identidad estable antes de la primera mutación del carrito. De este
+        # modo dos peticiones paralelas del mismo invitado comparten el bloqueo.
+        request.session.setdefault("carrito_sesion", secrets.token_urlsafe(32))
     contexto["csrf_token"] = token
-    contexto["cabecera_comprador"] = contexto["puede_comprar"]
+    # La navegación de compras solo aparece después de elegir invitado o
+    # autenticarse como comprador; un visitante en /login aún no tiene acceso.
+    contexto["cabecera_comprador"] = contexto["es_invitado"] or contexto["es_comprador"]
     contexto["cabecera_gestion"] = contexto["es_vendedor"] or contexto["es_admin"]
     contexto["es_inicio"] = request.url.path == "/inicio"
     contexto["categorias"] = list(Categoria)
@@ -153,13 +161,17 @@ def buscar(db, q, categoria, destacados, pagina, geo=(None, None, 0), tienda_id=
                              or_(Tienda.fecha_renovacion_plan.is_(None), Tienda.fecha_renovacion_plan > datetime.utcnow()))
     if tienda_id is not None:
         query = query.filter(Producto.tienda_id == tienda_id)
-    precio_final = case((Producto.precio_oferta.isnot(None), Producto.precio_oferta), else_=Producto.precio)
+    oferta_valida = and_(Producto.precio_oferta.isnot(None), Producto.precio_oferta >= 0,
+                         Producto.precio_oferta < Producto.precio)
+    precio_final = case((oferta_valida, Producto.precio_oferta), else_=Producto.precio)
     if precio_min is not None:
         query = query.filter(precio_final >= precio_min)
     if precio_max is not None:
         query = query.filter(precio_final <= precio_max)
     if valoracion_min is not None and valoracion_min > 0:
         query = query.filter(Producto.valoracion_media >= valoracion_min)
+    if tienda_valoracion_min is not None and tienda_valoracion_min > 0:
+        query = query.filter(Tienda.valoracion_media >= tienda_valoracion_min)
     if modalidad:
         query = query.filter(Producto.modalidad_compra == modalidad)
     query = filtrar_radio(query, db, geo)
@@ -304,9 +316,9 @@ def inicio(request: Request, q: str = Query("", max_length=120), categoria: Cate
     datos = buscar(db, q, categoria, destacados, pagina, geo, tienda_id,
                    precio_min, precio_max, valoracion_min, modalidad, tienda_valoracion_min, tipo_catalogo)
     def pagina_url(numero):
-        params = {"pagina": numero}
-        if request.query_params.get("tab") in {"mapa", "productos", "tiendas"}:
-            params["tab"] = request.query_params["tab"]
+        # La paginación pertenece al panel de productos. Se fija la pestaña porque
+        # sus enlaces se renderizan antes de que JavaScript cambie la URL al pulsarla.
+        params = {"pagina": numero, "tab": "productos"}
         if es_busqueda: params["q"] = q
         if q: params["q"] = q
         if categoria: params["categoria"] = categoria.value
@@ -615,6 +627,12 @@ def cambiar_carrito(request, db, producto_id, cantidad, sumar=False):
     if usuario:
         # Serializa cambios del mismo comprador, incluida la creación del primer carrito.
         db.query(Usuario).filter_by(id=usuario.id).with_for_update().one()
+    else:
+        sesion_invitado = request.session.setdefault("carrito_sesion", secrets.token_urlsafe(32))
+        if db.bind.dialect.name == "postgresql":
+            bloqueo = int.from_bytes(hashlib.sha256(("carrito:" + sesion_invitado).encode()).digest()[:8],
+                                      "big", signed=True)
+            db.execute(text("SELECT pg_advisory_xact_lock(:bloqueo)"), {"bloqueo": bloqueo})
     carrito = obtener_carrito(request, db, usuario)
     if carrito:
         db.query(Carrito).filter_by(id=carrito.id).with_for_update().one()
@@ -631,12 +649,11 @@ def cambiar_carrito(request, db, producto_id, cantidad, sumar=False):
         if str(producto_id) not in cantidades and len(cantidades) >= 50:
             raise HTTPException(409, "El carrito admite hasta 50 productos distintos")
     if carrito is None:
-        sesion = None if usuario else secrets.token_urlsafe(32)
+        sesion = None if usuario else sesion_invitado
         carrito = Carrito(usuario_id=usuario.id if usuario else None, sesion=sesion)
         db.add(carrito)
         db.flush()
         if not usuario:
-            request.session["carrito_sesion"] = sesion
             # Conserva los productos de las antiguas cestas almacenadas en la cookie.
             for anterior, unidades in cantidades.items():
                 if db.get(Producto, int(anterior)):

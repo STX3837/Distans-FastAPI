@@ -83,3 +83,23 @@ def test_vendedor_cancela_solo_su_subpedido(client, db_session, user_factory):
                             headers={'X-CSRF-Token': client.cookies.get('csrf_token')})
     assert delivered.status_code == 200
     assert delivered.json()['estado'] == 'entregado'
+
+
+def test_vendedor_no_puede_saltar_ni_retroceder_estados(client, db_session, user_factory):
+    vendedor = user_factory(email='flujo-vendedor@example.com', rol=RolUsuario.VENDEDOR)
+    tienda = Tienda(nombre='Flujo', vendedor_id=vendedor.id)
+    db_session.add(tienda); db_session.flush()
+    producto = Producto(nombre='Flujo', precio=10, stock=1, categoria=Categoria.HOGAR_BRICOLAJE, tienda_id=tienda.id)
+    db_session.add(producto); db_session.flush()
+    pedido = Pedido(codigo_pedido='FLUJO-1', subtotal=10, descuento=0, impuesto=0, coste_entrega=0, total=10,
+                    metodo_pago=MetodoPago.EFECTIVO, direccion_envio='A', direccion_facturacion='A')
+    sub = Subpedido(tienda_id=tienda.id)
+    pedido.subpedidos = [sub]
+    pedido.items = [ProductoPedido(producto=producto, subpedido=sub, cantidad=1, precio_unitario=10, total=10)]
+    db_session.add(pedido); db_session.commit()
+    client.post('/api/login', json={'email': vendedor.email, 'contrasena': 'clave12345'})
+    token = client.cookies.get('csrf_token')
+    url = f'/gestion/tiendas/{tienda.id}/pedidos/{pedido.id}/estado'
+    assert client.post(url, data={'csrf_token': token, 'estado': 'recogido'}).status_code == 409
+    assert client.post(url, data={'csrf_token': token, 'estado': 'listo para recoger'}, follow_redirects=False).status_code == 303
+    assert client.post(url, data={'csrf_token': token, 'estado': 'en preparacion'}).status_code == 409

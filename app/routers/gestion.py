@@ -8,11 +8,11 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models import Categoria, CoordenadasTienda, Pedido, Producto, ProductoPedido, RolUsuario, Tienda, Usuario, VisitaProducto, VisitaTienda
+from app.models import Categoria, ComentarioProducto, CoordenadasTienda, Pedido, Producto, ProductoPedido, RolUsuario, Tienda, Usuario, VisitaProducto, VisitaTienda
 from app.routers.auth import _validar_csrf
 from app.routers.users import _obtener_usuario_actual
 from app.routers.catalogo import pagina_publica, producto_publico
@@ -63,6 +63,17 @@ def tienda_permitida(db, usuario, tienda_id):
     return tienda
 
 
+def vendedores_asignables(db, tienda=None):
+    """Vendedores sin tienda, más el propietario actual al editar."""
+    tiene_tienda = db.query(Tienda.id).filter(Tienda.vendedor_id == Usuario.id).exists()
+    condicion = ~tiene_tienda
+    if tienda is not None:
+        condicion = or_(condicion, Usuario.id == tienda.vendedor_id)
+    return db.query(Usuario).filter(
+        Usuario.rol == RolUsuario.VENDEDOR, condicion,
+    ).order_by(Usuario.nombre, Usuario.email, Usuario.id).all()
+
+
 class TiendaDatos(BaseModel):
     nombre: str = Field(min_length=1, max_length=160)
     descripcion: str = Field(default="", max_length=5000)
@@ -97,7 +108,6 @@ class ProductoDatos(BaseModel):
     descripcion: str = Field(default="", max_length=5000)
     precio: float = Field(gt=0, allow_inf_nan=False)
     precio_oferta: float | None = Field(default=None, ge=0, allow_inf_nan=False)
-    modalidad_compra: str = Field(default="presencial", pattern="^(online|presencial)$")
     marca: str = Field(default="", max_length=160)
     categoria: Categoria
     imagen: str = Field(default="", max_length=1000)
@@ -153,6 +163,9 @@ def guardar_tienda(db, usuario, tienda, datos):
         tienda.coordenadas = CoordenadasTienda(latitud=datos.latitud, longitud=datos.longitud)
     else:
         tienda.coordenadas.latitud, tienda.coordenadas.longitud = datos.latitud, datos.longitud
+    modalidad_compra = "online" if tienda.compra_online else "presencial"
+    for producto in tienda.productos:
+        producto.modalidad_compra = modalidad_compra
     db.commit()
     return datos_tienda(tienda)
 
@@ -214,6 +227,7 @@ def guardar_producto(db, tienda, producto, datos):
         producto = Producto(tienda_id=tienda.id)
         db.add(producto)
     for key, value in datos.model_dump().items(): setattr(producto, key, value)
+    producto.modalidad_compra = "online" if tienda.compra_online else "presencial"
     producto.fecha_actualizacion = datetime.utcnow()
     db.commit()
     return producto_publico(producto)
@@ -260,6 +274,8 @@ def borrar_producto(producto_id: int, request: Request, db: Session = Depends(ge
 @router.get("/mi-tienda")
 @router.get("/admin/tiendas")
 def mis_tiendas(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = gestor(request, db)
     if request.url.path == "/admin/tiendas" and usuario.rol != RolUsuario.ADMIN:
         raise HTTPException(403, "Acceso exclusivo para administradores")
@@ -270,11 +286,13 @@ def mis_tiendas(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/gestion/tiendas/nueva")
 def nueva_tienda(request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = gestor(request, db)
     if usuario.rol == RolUsuario.VENDEDOR and db.query(Tienda).filter_by(vendedor_id=usuario.id).first():
         return RedirectResponse("/mi-tienda", status_code=303)
     return pagina_publica(request, db, "gestion_tienda_form.html", {
-        "tienda_gestion": None, "vendedores": db.query(Usuario).filter(Usuario.rol == RolUsuario.VENDEDOR).all() if usuario.rol == RolUsuario.ADMIN else [],
+        "tienda_gestion": None, "vendedores": vendedores_asignables(db) if usuario.rol == RolUsuario.ADMIN else [],
     })
 
 
@@ -288,6 +306,64 @@ class StockProductoDatos(StockDatos):
 
 class StocksDatos(BaseModel):
     productos: list[StockProductoDatos] = Field(min_length=1, max_length=100)
+
+
+class ComentarioGestionDatos(BaseModel):
+    texto: str = Field(min_length=1, max_length=1000)
+
+    @field_validator("texto")
+    @classmethod
+    def texto_no_vacio(cls, value):
+        if not value.strip():
+            raise ValueError("El comentario no puede estar vacío")
+        return value.strip()
+
+
+def comentario_gestion(db, producto_id, usuario_id):
+    comentario = db.get(ComentarioProducto, (usuario_id, producto_id))
+    if comentario is None:
+        raise HTTPException(404, "Comentario no encontrado")
+    return comentario
+
+
+@router.get("/api/gestion/productos/{producto_id}/comentarios")
+def comentarios_producto_gestion(producto_id: int, request: Request, db: Session = Depends(get_db)):
+    usuario = gestor(request, db)
+    producto = producto_permitido(db, usuario, producto_id)
+    comentarios = (db.query(ComentarioProducto).filter_by(producto_id=producto.id)
+                   .order_by(ComentarioProducto.fecha_actualizacion.desc()).all())
+    return {"producto": {"id": producto.id, "nombre": producto.nombre},
+            "puede_editar": usuario.rol == RolUsuario.ADMIN,
+            "comentarios": [{"usuario_id": item.usuario_id,
+                              "autor": (item.autor.nombre + " " + item.autor.apellidos).strip(),
+                              "email": item.autor.email, "texto": item.texto,
+                              "fecha_actualizacion": item.fecha_actualizacion} for item in comentarios]}
+
+
+@router.put("/api/gestion/productos/{producto_id}/comentarios/{usuario_id}")
+def editar_comentario_producto_gestion(producto_id: int, usuario_id: int, datos: ComentarioGestionDatos,
+                                       request: Request, db: Session = Depends(get_db)):
+    usuario = gestor(request, db)
+    if usuario.rol != RolUsuario.ADMIN:
+        raise HTTPException(403, "Solo administración puede editar comentarios ajenos")
+    _validar_csrf(request)
+    producto_permitido(db, usuario, producto_id)
+    comentario = comentario_gestion(db, producto_id, usuario_id)
+    comentario.texto = datos.texto
+    comentario.fecha_actualizacion = datetime.utcnow()
+    db.commit()
+    return {"mensaje": "Comentario actualizado"}
+
+
+@router.delete("/api/gestion/productos/{producto_id}/comentarios/{usuario_id}")
+def eliminar_comentario_producto_gestion(producto_id: int, usuario_id: int, request: Request,
+                                         db: Session = Depends(get_db)):
+    usuario = gestor(request, db)
+    _validar_csrf(request)
+    producto_permitido(db, usuario, producto_id)
+    db.delete(comentario_gestion(db, producto_id, usuario_id))
+    db.commit()
+    return {"mensaje": "Comentario eliminado"}
 
 
 @router.patch("/api/gestion/tiendas/{tienda_id}/stock")
@@ -322,17 +398,21 @@ def editar_stock(producto_id: int, datos: StockDatos, request: Request, db: Sess
 
 @router.get("/gestion/tiendas/{tienda_id}/editar")
 def formulario_tienda(tienda_id: int, request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = gestor(request, db)
     tienda = tienda_permitida(db, usuario, tienda_id)
     return pagina_publica(request, db, "gestion_tienda_form.html", {
         "tienda_gestion": datos_tienda(tienda), "tienda_activa": tienda.id,
-        "vendedores": db.query(Usuario).filter(Usuario.rol == RolUsuario.VENDEDOR).all() if usuario.rol == RolUsuario.ADMIN else [],
+        "vendedores": vendedores_asignables(db, tienda) if usuario.rol == RolUsuario.ADMIN else [],
     })
 
 
 @router.get("/gestion/tiendas/{tienda_id}/productos")
 def panel_productos(tienda_id: int, request: Request, q: str = Query("", max_length=120),
                     pagina: int = Query(1, ge=1), db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = gestor(request, db)
     tienda = tienda_permitida(db, usuario, tienda_id)
     query = db.query(Producto).filter_by(tienda_id=tienda.id)
@@ -350,6 +430,8 @@ def panel_productos(tienda_id: int, request: Request, q: str = Query("", max_len
 
 @router.get("/gestion/tiendas/{tienda_id}")
 def dashboard(tienda_id: int, request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = gestor(request, db)
     tienda = tienda_permitida(db, usuario, tienda_id)
     # Solo las líneas de esta tienda, incluso en pedidos que contienen varias tiendas.
@@ -369,6 +451,8 @@ def dashboard(tienda_id: int, request: Request, db: Session = Depends(get_db)):
 
 @router.get("/gestion/tiendas/{tienda_id}/estadisticas")
 def estadisticas(tienda_id: int, request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("usuario"):
+        return RedirectResponse("/login", status_code=303)
     usuario = gestor(request, db)
     tienda = tienda_permitida(db, usuario, tienda_id)
     visitas_tienda = db.query(func.count(VisitaTienda.id)).filter(VisitaTienda.tienda_id == tienda.id).scalar() or 0

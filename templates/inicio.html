@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Inicio - Distans{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"><link rel="stylesheet" href="/static/catalogo.css?v=clickable-cards-1">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"><link rel="stylesheet" href="/static/catalogo.css?v=controls-layout-2">{% endblock %}
 
 {% block content %}
 <main class="market-page" data-default-tab="{{ vista_inicio }}">
@@ -22,4 +22,4 @@
 <script id="mapStores" type="application/json">{{ tiendas|tojson }}</script>
 <p class="cart-feedback" data-cart-feedback role="status" aria-live="polite"></p>
 {% endblock %}
-{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js"></script><script src="/static/catalogo.js?v=filters-panel-1"></script><script src="/static/carrito.js?v=cesta-1"></script>{% endblock %}
+{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js"></script><script src="/static/catalogo.js?v=filters-panel-1"></script><script src="/static/carrito.js?v=api-errors-2"></script>{% endblock %}

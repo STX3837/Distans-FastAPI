@@ -13,7 +13,20 @@ def vaciar_carrito_pedido(db, pedido):
         return
     carrito = db.query(Carrito).filter_by(id=pedido.carrito_id).with_for_update().first()
     if carrito:
-        db.query(ProductoCarrito).filter_by(carrito_id=carrito.id).delete(synchronize_session='fetch')
+        # El comprador puede haber añadido productos mientras completaba Stripe.
+        # Retira solo la instantánea comprada y conserva las unidades posteriores.
+        compradas = {}
+        for linea in pedido.items:
+            if not linea.cancelado:
+                compradas[linea.producto_id] = compradas.get(linea.producto_id, 0) + linea.cantidad
+        for item in db.query(ProductoCarrito).filter_by(carrito_id=carrito.id).with_for_update().all():
+            cantidad = compradas.get(item.producto_id, 0)
+            if not cantidad:
+                continue
+            if item.cantidad <= cantidad:
+                db.delete(item)
+            else:
+                item.cantidad -= cantidad
         carrito.fecha_actualizacion = datetime.utcnow()
     pedido.carrito_vaciado = True
 

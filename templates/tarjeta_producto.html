@@ -9,7 +9,7 @@
                         {% if producto.marca %}<p class="shop-address">Marca: {{ producto.marca }}</p>{% endif %}
                         <p class="stock-note">Stock: {{ producto.stock }}</p>
                         <div class="stock-edit-controls" hidden><label for="stock-{{ producto.id }}">Stock</label><input id="stock-{{ producto.id }}" type="number" min="0" max="1000000" step="1" value="{{ producto.stock }}" data-stock-product="{{ producto.id }}" required></div>
-                        <div class="management-actions"><button type="button" class="add-cart" data-edit-product='{{ producto|tojson|forceescape }}'>Editar / categoría</button><button type="button" class="danger-button" data-delete-product="{{ producto.id }}">Eliminar</button></div>
+                        <div class="management-actions"><button type="button" class="clear-filters" data-product-comments="{{ producto.id }}">Ver comentarios</button><button type="button" class="add-cart" data-edit-product='{{ producto|tojson|forceescape }}'>Editar / categoría</button><button type="button" class="danger-button" data-delete-product="{{ producto.id }}">Eliminar</button></div>
                         {% else %}
                         {% if not producto.compra_online %}<p class="visual-catalog-notice"><span aria-hidden="true">&#128065;</span> Cat&aacute;logo visual <small>No disponible para compra</small></p>{% else %}<div class="product-cart-controls">
                         <label for="cantidad-producto-{{ producto.id }}">Cantidad</label>

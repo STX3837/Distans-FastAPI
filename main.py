@@ -1,16 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 import os
 import asyncio
-import logging
 from contextlib import suppress
-from sqlalchemy import text
-from app.database import engine
-from app.models import Base, Tienda
 from app.routers import users, auth, catalogo, gestion, admin_pedidos, favoritos, pedidos, planes
 from app.password_reset import router as password_reset_router
-from app.migrations import actualizar_pedidos, actualizar_cesta, actualizar_filtros, actualizar_visitas
+from app.access_control import RequerirAccesoMiddleware
 
 # Crear la aplicación FastAPI
 app = FastAPI(
@@ -24,6 +21,7 @@ session_secret_key = os.getenv("SESSION_SECRET_KEY")
 if not session_secret_key:
     raise RuntimeError("SESSION_SECRET_KEY environment variable is required")
 
+app.add_middleware(RequerirAccesoMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=session_secret_key,
@@ -31,29 +29,33 @@ app.add_middleware(
     https_only=environment in {"production", "staging"},
 )
 
+allowed_hosts = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",") if host.strip()]
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Cabeceras defensivas comunes sin interferir con Stripe ni Leaflet."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)")
+    response.headers.setdefault("Content-Security-Policy",
+        "default-src 'self'; img-src 'self' data: https:; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self'; "
+        "frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+    if environment in {"production", "staging"}:
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
+
 # Servir archivos estáticos
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Crear las tablas en la BD (En un proyecto real se usan migraciones con 'Alembic')
+# El esquema se prepara mediante ``python -m scripts.migrate`` antes de servir HTTP.
 @app.on_event("startup")
 async def startup_event():
-    Base.metadata.create_all(bind=engine)
-    # create_all no añade índices a tablas existentes.
-    with engine.connect() as connection:
-        vendedores_duplicados = connection.execute(text(
-            "SELECT vendedor_id FROM tiendas GROUP BY vendedor_id HAVING COUNT(*) > 1 LIMIT 1"
-        )).first()
-    if vendedores_duplicados:
-        logging.warning("No se crea el índice único de tiendas: hay vendedores con varias tiendas existentes")
-    else:
-        for index in Tienda.__table__.indexes:
-            if index.name == "uq_tiendas_vendedor_id":
-                index.create(bind=engine, checkfirst=True)
-    actualizar_pedidos(engine)
-    actualizar_cesta(engine)
-    actualizar_filtros(engine)
-    actualizar_visitas(engine)
     from app.payment_worker import vigilar_reservas
     app.state.payment_worker = asyncio.create_task(vigilar_reservas())
 

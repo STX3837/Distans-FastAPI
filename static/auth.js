@@ -10,6 +10,30 @@ function getCookieValue(name) {
     return null;
 }
 
+function apiErrorMessage(detail, fallback = 'No se pudo completar la operación') {
+    if (typeof detail === 'string' && detail.trim()) return detail;
+    if (Array.isArray(detail)) {
+        const messages = detail.map(issue => {
+            if (typeof issue === 'string') return issue;
+            if (issue && typeof issue === 'object') return issue.msg || issue.message || '';
+            return '';
+        }).filter(Boolean);
+        if (messages.length) return messages.join('. ');
+    }
+    if (detail && typeof detail === 'object') return detail.message || fallback;
+    return fallback;
+}
+
+async function readApiResponse(response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) return response.status === 204 ? null : response.json();
+    const text = await response.text();
+    if (!response.ok) throw new Error(response.status >= 500
+        ? 'El servidor no pudo completar la operación. Inténtalo de nuevo.'
+        : (text.trim() || 'Respuesta no válida del servidor.'));
+    return text;
+}
+
 async function cerrarSesion() {
     try {
         const csrfToken = getCookieValue('csrf_token');
@@ -48,12 +72,12 @@ function iniciarLogin() {
             });
 
             if (!response.ok) {
-                const data = await response.json();
-                loginError.textContent = data.detail || 'No se pudo iniciar sesión';
+                const data = await readApiResponse(response);
+                loginError.textContent = apiErrorMessage(data && data.detail, 'No se pudo iniciar sesión');
                 return;
             }
 
-            const data = await response.json();
+            const data = await readApiResponse(response);
             window.location.href = data.redirect_url || '/inicio';
         } catch (error) {
             console.error('Error de login:', error);

@@ -44,20 +44,27 @@ class MetodoPago(str, Enum):
 
 class UsuarioBase(BaseModel):
     """Campos básicos de usuario"""
-    nombre: str = Field(min_length=1)
-    apellidos: str = Field(min_length=1)
-    email: EmailStr
-    telefono: Optional[str] = None
-    direccion: Optional[str] = None
-    ciudad: Optional[str] = None
-    codigo_postal: Optional[str] = None
+    nombre: str = Field(min_length=1, max_length=50)
+    apellidos: str = Field(min_length=1, max_length=100)
+    email: EmailStr = Field(max_length=254)
+    telefono: Optional[str] = Field(default=None, min_length=7, max_length=20, pattern=r"^[+0-9 ()-]+$")
+    direccion: Optional[str] = Field(default=None, max_length=200)
+    ciudad: Optional[str] = Field(default=None, max_length=80)
+    codigo_postal: Optional[str] = Field(default=None, min_length=3, max_length=12, pattern=r"^[A-Za-z0-9 -]+$")
 
-    @field_validator("nombre", "apellidos", "email", mode="before")
+    @field_validator("nombre", "apellidos", mode="before")
     @classmethod
     def validar_identidad(cls, value):
         if value is None or not str(value).strip():
             raise ValueError("Este campo no puede estar vacío")
         return str(value).strip()
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalizar_email(cls, value):
+        if value is None or not str(value).strip():
+            raise ValueError("Este campo no puede estar vacío")
+        return str(value).strip().lower()
 
 
 class UsuarioCreate(UsuarioBase):
@@ -68,10 +75,10 @@ class UsuarioCreate(UsuarioBase):
 
 class UsuarioRegistro(UsuarioCreate):
     """RF27: datos de contacto y dirección obligatorios en el registro público."""
-    telefono: str = Field(min_length=1)
-    direccion: str = Field(min_length=1)
-    ciudad: str = Field(min_length=1)
-    codigo_postal: str = Field(min_length=1)
+    telefono: str = Field(min_length=7, max_length=20, pattern=r"^[+0-9 ()-]+$")
+    direccion: str = Field(min_length=1, max_length=200)
+    ciudad: str = Field(min_length=1, max_length=80)
+    codigo_postal: str = Field(min_length=3, max_length=12, pattern=r"^[A-Za-z0-9 -]+$")
 
     @field_validator("telefono", "direccion", "ciudad", "codigo_postal", mode="before")
     @classmethod
@@ -83,10 +90,10 @@ class UsuarioRegistro(UsuarioCreate):
 
 class DatosCompradorPago(UsuarioBase):
     """Datos de la cuenta reutilizables al completar el pago; no incluye credenciales."""
-    telefono: str = Field(min_length=1)
-    direccion: str = Field(min_length=1)
-    ciudad: str = Field(min_length=1)
-    codigo_postal: str = Field(min_length=1)
+    telefono: str = Field(min_length=7, max_length=20, pattern=r"^[+0-9 ()-]+$")
+    direccion: str = Field(min_length=1, max_length=200)
+    ciudad: str = Field(min_length=1, max_length=80)
+    codigo_postal: str = Field(min_length=3, max_length=12, pattern=r"^[A-Za-z0-9 -]+$")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -97,25 +104,32 @@ class UsuarioAdminCreate(UsuarioCreate):
 
 class UsuarioUpdate(BaseModel):
     """Schema para actualizar datos del usuario - RF28"""
-    nombre: Optional[str] = None
-    apellidos: Optional[str] = None
-    email: Optional[EmailStr] = None
-    telefono: Optional[str] = None
-    direccion: Optional[str] = None
-    ciudad: Optional[str] = None
-    codigo_postal: Optional[str] = None
+    nombre: Optional[str] = Field(default=None, max_length=50)
+    apellidos: Optional[str] = Field(default=None, max_length=100)
+    email: Optional[EmailStr] = Field(default=None, max_length=254)
+    telefono: Optional[str] = Field(default=None, min_length=7, max_length=20, pattern=r"^[+0-9 ()-]+$")
+    direccion: Optional[str] = Field(default=None, max_length=200)
+    ciudad: Optional[str] = Field(default=None, max_length=80)
+    codigo_postal: Optional[str] = Field(default=None, min_length=3, max_length=12, pattern=r"^[A-Za-z0-9 -]+$")
 
-    @field_validator("nombre", "apellidos", "email", mode="before")
+    @field_validator("nombre", "apellidos", mode="before")
     @classmethod
     def validar_identidad(cls, value):
         if value is None or not str(value).strip():
             raise ValueError("Este campo no puede estar vacío")
         return str(value).strip()
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalizar_email(cls, value):
+        if value is None or not str(value).strip():
+            raise ValueError("Este campo no puede estar vacío")
+        return str(value).strip().lower()
+
 
 class UsuarioCambiarContrasena(BaseModel):
     """Schema para cambiar contraseña"""
-    contrasena_actual: str
+    contrasena_actual: str = Field(min_length=1, max_length=128)
     contrasena_nueva: str = Field(min_length=8, max_length=128)
 
 
@@ -127,28 +141,34 @@ class UsuarioResponse(UsuarioBase):
     rol: RolUsuario
     activo: bool
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UsuarioAdminUpdate(BaseModel):
     """Schema para actualizar usuario como administrador - RF32"""
-    nombre: Optional[str] = None
-    apellidos: Optional[str] = None
-    email: Optional[EmailStr] = None
-    telefono: Optional[str] = None
-    direccion: Optional[str] = None
-    ciudad: Optional[str] = None
-    codigo_postal: Optional[str] = None
+    nombre: Optional[str] = Field(default=None, max_length=50)
+    apellidos: Optional[str] = Field(default=None, max_length=100)
+    email: Optional[EmailStr] = Field(default=None, max_length=254)
+    telefono: Optional[str] = Field(default=None, min_length=7, max_length=20, pattern=r"^[+0-9 ()-]+$")
+    direccion: Optional[str] = Field(default=None, max_length=200)
+    ciudad: Optional[str] = Field(default=None, max_length=80)
+    codigo_postal: Optional[str] = Field(default=None, min_length=3, max_length=12, pattern=r"^[A-Za-z0-9 -]+$")
     rol: Optional[RolUsuario] = None
     activo: Optional[bool] = None
 
-    @field_validator("nombre", "apellidos", "email", mode="before")
+    @field_validator("nombre", "apellidos", mode="before")
     @classmethod
     def validar_identidad(cls, value):
         if value is None or not str(value).strip():
             raise ValueError("Este campo no puede estar vacío")
         return str(value).strip()
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalizar_email(cls, value):
+        if value is None or not str(value).strip():
+            raise ValueError("Este campo no puede estar vacío")
+        return str(value).strip().lower()
 
 
 class UsuarioAdminResponse(UsuarioBase):
@@ -159,8 +179,7 @@ class UsuarioAdminResponse(UsuarioBase):
     rol: RolUsuario
     activo: bool
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ===== TIENDA SCHEMAS =====
@@ -197,8 +216,7 @@ class TiendaResponse(TiendaBase):
     fecha_creacion: datetime
     fecha_actualizacion: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ===== PRODUCTO SCHEMAS =====
@@ -243,8 +261,7 @@ class ProductoResponse(ProductoBase):
     fecha_creacion: datetime
     fecha_actualizacion: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ===== PRODUCTO CARRITO SCHEMAS =====
@@ -273,8 +290,7 @@ class ProductoCarritoResponse(ProductoCarritoBase):
     fecha_actualizacion: datetime
     producto: Optional[ProductoResponse] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ===== CARRITO SCHEMAS =====
@@ -295,10 +311,9 @@ class CarritoResponse(CarritoBase):
     usuario_id: Optional[int] = None
     fecha_creacion: datetime
     fecha_actualizacion: datetime
-    items: List[ProductoCarritoResponse] = []
+    items: List[ProductoCarritoResponse] = Field(default_factory=list)
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ===== PRODUCTO PEDIDO SCHEMAS =====
@@ -319,8 +334,7 @@ class ProductoPedidoResponse(ProductoPedidoBase):
     fecha_actualizacion: datetime
     producto: Optional[ProductoResponse] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ===== PEDIDO SCHEMAS =====
@@ -370,7 +384,6 @@ class PedidoResponse(PedidoBase):
     fecha: datetime
     fecha_creacion: datetime
     fecha_actualizacion: datetime
-    items: List[ProductoPedidoResponse] = []
+    items: List[ProductoPedidoResponse] = Field(default_factory=list)
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
