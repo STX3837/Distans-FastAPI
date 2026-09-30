@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ tienda.nombre }} - Distans{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css?v=controls-layout-2">{% endblock %}
+{% block content %}
+<main class="catalog-page catalog-content">
+<a href="/inicio?q=">Volver al catálogo general</a>
+<section class="catalog-hero"><h1>{{ tienda.nombre }}</h1>{% if es_comprador %}<button type="button" class="favorite-button" data-favorite-type="tiendas" data-favorite-id="{{ tienda.id }}" aria-pressed="false">♡ Guardar tienda</button>{% endif %}
+<img class="store-cover" src="{{ tienda_imagen or '/static/tienda-predeterminada.svg' }}" alt="{{ tienda.nombre }}" onerror="this.onerror=null;this.src='/static/tienda-predeterminada.svg'">
+{% if tienda_categorias %}<p>Categorías: {{ tienda_categorias|join(' · ') }}</p>{% endif %}
+{% if tienda.descripcion %}<p>{{ tienda.descripcion }}</p>{% endif %}
+<p>{{ tienda.direccion or tienda.ubicacion or 'Dirección pendiente' }}</p>
+{% if tienda.horario %}<p>Horario: {{ tienda.horario }}</p>{% endif %}
+<p class="rating-summary">Valoración media: {% if tienda.valoracion_media is not none %}{{ "%.1f"|format(tienda.valoracion_media) }} / 5{% else %}Sin valoraciones{% endif %}</p>
+{% if es_comprador %}<form class="rating-form" data-rating-type="tiendas" data-rating-id="{{ tienda.id }}"><fieldset class="star-rating"><legend>Tu valoración</legend>{% for n in range(5, 0, -1) %}<input type="radio" id="storeRating{{ n }}" name="puntuacion" value="{{ n }}" {% if valoracion_usuario == n %}checked{% endif %} required><label for="storeRating{{ n }}" title="{{ n }} de 5 estrellas"><span class="sr-only">{{ n }} de 5 estrellas</span><span aria-hidden="true">&#9733;</span></label>{% endfor %}</fieldset><button type="submit" class="search-button">{{ 'Actualizar valoración' if valoracion_usuario else 'Valorar tienda' }}</button><span role="status" data-rating-status></span></form>{% endif %}
+<form class="search-form" action="/tiendas/{{ tienda.id }}" method="get" role="search">
+<div><label for="busqueda">Buscar en esta tienda</label><input id="busqueda" name="q" value="{{ q }}" maxlength="120" placeholder="Producto o marca"></div>
+<div><label for="categoria">Categoría</label><select id="categoria" name="categoria"><option value="">Todas las categorías</option>{% for categoria in categorias %}<option value="{{ categoria.value }}" {% if categoria.value == categoria_seleccionada %}selected{% endif %}>{{ categoria.value }}</option>{% endfor %}</select></div>
+<label class="featured-filter"><input type="checkbox" name="destacados" value="true" {% if destacados %}checked{% endif %}> Solo destacados</label>
+<button class="search-button" type="submit">Buscar</button>
+<a class="clear-filters" href="/tiendas/{{ tienda.id }}">Quitar filtros</a>
+</form></section>
+{% include "comentarios.html" %}
+<div class="results-heading"><div><h2>Productos de esta tienda</h2><p>{{ total }} productos · Página {{ pagina }}{% if paginas %} de {{ paginas }}{% endif %}</p></div></div>
+<div class="product-grid">{% for producto in productos %}{% include "tarjeta_producto.html" %}{% else %}<div class="empty-catalog"><h3>No hay productos para mostrar</h3><p>Prueba otros filtros o vuelve a consultar todos los productos de esta tienda.</p></div>{% endfor %}</div>
+<nav class="pagination" aria-label="Páginas de productos">{% if anterior %}<a href="{{ anterior }}">Anterior</a>{% endif %}{% if siguiente %}<a href="{{ siguiente }}">Siguiente</a>{% endif %}</nav>
+<p class="cart-feedback" data-cart-feedback role="status" aria-live="polite"></p>
+</main>{% endblock %}
+{% block scripts %}<script src="/static/carrito.js?v=api-errors-2"></script><script src="/static/valoraciones.js?v=api-errors-2"></script><script src="/static/comentarios.js?v=api-errors-2"></script>{% endblock %}

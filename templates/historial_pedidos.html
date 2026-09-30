@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Mis pedidos - Distans{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css">{% endblock %}
+{% block content %}<main class="catalog-page catalog-content"><h1>Mis pedidos</h1>
+{% for pedido in pedidos %}<article class="cart-item"><h2>{{ pedido.codigo_pedido }}</h2><p>{{ pedido.fecha.strftime('%d/%m/%Y %H:%M') }} · {{ pedido.estado.value }} · {{ '%.2f'|format(pedido.total) }} €</p><a href="/pedidos/seguimiento?codigo={{ pedido.codigo_pedido|urlencode }}">Seguir pedido</a></article>{% else %}<p>Aún no has realizado ningún pedido.</p>{% endfor %}
+</main>{% endblock %}

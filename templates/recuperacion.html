@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Restablecer contraseña' if restablecer else 'Recuperar contraseña' }} - Distans{% endblock %}
+{% block content %}
+<main class="page-wrap"><section class="card account-card"><h1>{{ 'Restablecer contraseña' if restablecer else 'Recuperar contraseña' }}</h1>
+{% if restablecer %}<form id="resetForm"><div class="field"><label for="contrasena_nueva">Nueva contraseña (8–128 caracteres)</label><input id="contrasena_nueva" name="contrasena_nueva" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></div>
+<div class="field"><label for="confirmacion">Confirmar nueva contraseña</label><input id="confirmacion" type="password" autocomplete="new-password" required></div><button class="button" type="submit">Restablecer contraseña</button></form>
+{% else %}<p>Introduce tu correo para recibir un enlace de recuperación.</p>
+<form id="recoveryForm"><div class="field"><label for="email">Correo electrónico</label><input id="email" name="email" type="email" autocomplete="email" required></div><button class="button" type="submit">Enviar enlace</button></form>{% endif %}
+<p id="recoveryMensaje" role="status" aria-live="polite"></p><p><a href="/login">Volver al inicio de sesión</a></p>
+</section></main>
+{% endblock %}
+{% block scripts %}<script src="/static/cuenta.js"></script>{% endblock %}

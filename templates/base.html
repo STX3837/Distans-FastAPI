@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Distans{% endblock %}</title>
+    <link rel="stylesheet" href="/static/auth.css">
+    <link rel="stylesheet" href="/static/cesta.css?v=1">
+    <link rel="stylesheet" href="/static/responsive.css?v=1">
+    {% block styles %}{% endblock %}
+    <link rel="stylesheet" href="/static/polish.css?v=visual-refresh-1">
+<link rel="icon" type="image/png" href="/static/logo.png">
+</head>
+<body>
+    {% block header %}
+    {% if cabecera_comprador %}
+    {% include "cabecera_comprador.html" %}
+    {% elif (es_vendedor or es_admin) and cabecera_gestion %}
+    {% include "cabecera_gestion.html" %}
+    {% else %}
+    <header class="topbar">
+        <a class="brand" href="/inicio" aria-label="Distans: inicio">
+            <div class="brand-mark" aria-hidden="true"><img src="/static/logo.png" alt="" width="52" height="52" style="width:100%;height:100%;object-fit:contain">
+            </div>
+            <span class="brand-name">DISTANS</span>
+        </a>
+
+        <div class="topbar-actions">
+            {% if es_comprador or es_invitado %}<a class="topbar-button" href="/carrito">Carrito</a>{% endif %}
+            {% if user_name %}
+            <a class="icon-button" href="/usuarios/cuenta" aria-label="Mi cuenta de {{ user_name }}">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 21C20 17.6863 16.4183 15 12 15C7.58172 15 4 17.6863 4 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/></svg>
+            </a>
+            {% if es_vendedor or es_admin %}<a class="topbar-button" href="/mi-tienda">{{ 'Tiendas' if es_admin else 'Mi tienda' }}</a>{% endif %}
+            {% if es_admin %}<a class="topbar-button" href="/admin/usuarios/panel">Usuarios</a>{% endif %}
+            <span class="user-name">{{ user_name }}</span>
+            <button class="topbar-button topbar-logout" type="button" onclick="cerrarSesion()">Cerrar sesión</button>
+            {% else %}
+            <a class="topbar-button {% if active_route == '/registro' %}active{% endif %}" href="/registro">Registrarse</a>
+            <a class="topbar-button {% if active_route == '/login' %}active{% endif %}" href="/login">Iniciar sesión</a>
+            {% if es_invitado %}
+            <a class="icon-button" href="/carrito" aria-label="Carrito">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2 3H5L7.2 14.2C7.3 14.7 7.7 15 8.2 15H18.6C19.1 15 19.5 14.7 19.6 14.2L21 6H6" stroke="#1E4FA8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="9" cy="20" r="1.4" stroke="#1E4FA8" stroke-width="1.8"/>
+                    <circle cx="17" cy="20" r="1.4" stroke="#1E4FA8" stroke-width="1.8"/>
+                </svg>
+            </a>
+            {% endif %}
+            {% endif %}
+        </div>
+    </header>
+    {% endif %}
+    {% endblock %}
+
+    {% block content %}{% endblock %}
+
+    {% if es_comprador or es_invitado %}
+    {% if es_comprador %}<a class="persistent-favorites" href="/favoritos">♥ Favoritos</a>{% endif %}
+    <a class="persistent-cart" href="/carrito">Carrito <span data-cart-count aria-live="polite">0</span></a>
+    <script src="/static/cesta.js?v=1"></script>
+    {% endif %}
+
+    <script src="/static/auth.js?v=api-errors-2"></script>
+    {% if es_comprador %}<script src="/static/favoritos.js?v=api-errors-2"></script>{% endif %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

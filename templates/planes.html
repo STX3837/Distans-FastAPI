@@ -1,0 +1,40 @@
+{% extends "gestion_base.html" %}
+{% block title %}Planes para vendedores - Distans{% endblock %}
+{% block content %}
+<main class="catalog-page catalog-content">
+  <h1>Planes para tu tienda</h1>
+  {% if tienda_plan %}
+  <p>Plan actual de {{ tienda_plan.nombre }}: <strong>{{ tienda_plan.plan_efectivo }}</strong>.</p>
+  {% if tienda_plan.plan_efectivo == 'Premium' and tienda_plan.fecha_renovacion_plan %}
+  <p>Premium activo hasta el {{ tienda_plan.fecha_renovacion_plan.strftime('%d/%m/%Y a las %H:%M') }} (UTC). Después, la tienda vuelve al catálogo visual si no contratas otro mes.</p>
+  {% endif %}
+  {% endif %}
+  {% if resultado_plan and pago_plan %}
+  <p role="status">{% if pago_plan.estado == 'pagado' %}Pago confirmado. Tu tienda ya tiene Premium activo.{% elif pago_plan.estado == 'pendiente' %}Estamos comprobando el pago. Actualiza esta página en unos instantes.{% else %}La sesión de pago ha caducado. Puedes iniciar otra.{% endif %}</p>
+  {% elif request.query_params.get('cancelado') %}<p role="status">Has cancelado el pago. El plan no ha cambiado.</p>{% endif %}
+  <div class="plan-cards">
+    <section class="plan-card"><h2>Freemium</h2><p class="plan-price">Gratis</p><ul><li>Tu tienda y productos aparecen en el catálogo y el mapa.</li><li>Los compradores pueden consultar tus productos y datos de contacto.</li><li>No se pueden añadir productos al carrito ni crear pedidos.</li></ul></section>
+    <section class="plan-card"><h2>Premium</h2><p class="plan-price">14,99 € / mes</p><ul><li>Todo lo incluido en Freemium.</li><li>Los compradores pueden añadir productos al carrito y comprarlos.</li><li>Tu tienda aparece en el filtro «Comprar online».</li></ul><p>Pago único por un mes natural. No hay renovación automática ni cargos futuros.</p>
+      {% if not tienda_plan %}<a class="add-cart" href="/gestion/tiendas/nueva">Registra tu tienda para contratar Premium</a>
+      {% elif tienda_plan.plan_efectivo != 'Premium' %}<button class="add-cart" id="buyPremium" type="button">Pagar 14,99 € y activar Premium durante un mes</button><p id="planPaymentStatus" role="status" aria-live="polite"></p>
+      {% else %}<p>Ya tienes Premium activo.</p>{% endif %}
+    </section>
+  </div>
+</main>
+{% endblock %}
+{% block scripts %}{{ super() }}<script>
+const buyPremium = document.getElementById('buyPremium');
+if (buyPremium) buyPremium.addEventListener('click', async () => {
+  buyPremium.disabled = true;
+  const status = document.getElementById('planPaymentStatus');
+  status.textContent = 'Abriendo la pasarela de pago…';
+  try {
+    const response = await fetch('/api/gestion/plan/pagar', {
+      method: 'POST', headers: {'X-CSRF-Token': {{ csrf_token|tojson }}}, credentials: 'same-origin'
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'No se pudo iniciar el pago.');
+    window.location.assign(data.url);
+  } catch (error) { status.textContent = error.message; buyPremium.disabled = false; }
+});
+</script>{% endblock %}

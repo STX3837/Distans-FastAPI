@@ -1,0 +1,182 @@
+﻿"""Migraciones idempotentes para PostgreSQL."""
+from pathlib import Path
+from sqlalchemy import inspect, text
+
+
+MIGRATION_LOCK_ID = 447_697_821
+
+
+def actualizar_base(engine):
+    """Inicializa y migra una instalación bajo un bloqueo global de PostgreSQL."""
+    from app.models import Base, Tienda
+
+    lock = engine.connect()
+    try:
+        if engine.dialect.name == 'postgresql':
+            lock.execute(text('SELECT pg_advisory_lock(:lock_id)'), {'lock_id': MIGRATION_LOCK_ID})
+            lock.commit()
+        Base.metadata.create_all(bind=engine)
+        actualizar_pedidos(engine)
+        actualizar_cesta(engine)
+        actualizar_filtros(engine)
+        actualizar_visitas(engine)
+        with engine.connect() as connection:
+            duplicado = connection.execute(text(
+                'SELECT vendedor_id FROM tiendas GROUP BY vendedor_id HAVING COUNT(*) > 1 LIMIT 1'
+            )).first()
+        if not duplicado:
+            for index in Tienda.__table__.indexes:
+                if index.name == 'uq_tiendas_vendedor_id':
+                    index.create(bind=engine, checkfirst=True)
+    finally:
+        if engine.dialect.name == 'postgresql':
+            lock.execute(text('SELECT pg_advisory_unlock(:lock_id)'), {'lock_id': MIGRATION_LOCK_ID})
+            lock.commit()
+        lock.close()
+
+
+def ejecutar(engine, filename):
+    sql = (Path(__file__).resolve().parents[1] / 'migrations' / filename).read_text(encoding='utf-8-sig')
+    sql = '\n'.join(line for line in sql.splitlines() if not line.strip().startswith('--'))
+    with engine.begin() as connection:
+        for statement in sql.split(';'):
+            statement = statement.strip()
+            if statement and statement not in {'BEGIN', 'COMMIT'}:
+                connection.exec_driver_sql(statement)
+
+
+def actualizar_cesta(engine):
+    if engine.dialect.name == 'postgresql':
+        ejecutar(engine, '20260914_cesta.sql')
+
+
+def actualizar_filtros(engine):
+    if engine.dialect.name != 'postgresql':
+        return
+    with engine.begin() as connection:
+        for table, columns in {
+            'tiendas': {'valoracion_media': 'DOUBLE PRECISION'},
+            'productos': {'valoracion_media': 'DOUBLE PRECISION', 'modalidad_compra': "VARCHAR(10) NOT NULL DEFAULT 'presencial'"},
+        }.items():
+            for name, definition in columns.items():
+                connection.exec_driver_sql(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {name} {definition}')
+        for name, definition in {
+            'plan': "VARCHAR(8) NOT NULL DEFAULT 'Premium'",
+            'suscripcion_activa': 'BOOLEAN NOT NULL DEFAULT TRUE',
+            'fecha_alta_plan': 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP',
+            'fecha_renovacion_plan': 'TIMESTAMP',
+            'pasarela_activa': 'BOOLEAN NOT NULL DEFAULT TRUE',
+        }.items():
+            connection.exec_driver_sql(f'ALTER TABLE tiendas ADD COLUMN IF NOT EXISTS {name} {definition}')
+        connection.exec_driver_sql("""
+            CREATE TABLE IF NOT EXISTS pagos_plan (
+                id SERIAL PRIMARY KEY,
+                tienda_id INTEGER NOT NULL REFERENCES tiendas(id) ON DELETE CASCADE,
+                vendedor_id INTEGER NOT NULL REFERENCES usuarios(id),
+                importe_centimos INTEGER NOT NULL DEFAULT 1499,
+                moneda VARCHAR(3) NOT NULL DEFAULT 'eur',
+                estado VARCHAR(12) NOT NULL DEFAULT 'pendiente',
+                stripe_session_id VARCHAR UNIQUE,
+                fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                fecha_pago TIMESTAMP,
+                fecha_fin TIMESTAMP
+            )
+        """)
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_pagos_plan_tienda_id ON pagos_plan (tienda_id)')
+        connection.exec_driver_sql(
+            'UPDATE productos SET valoracion_media = NULL WHERE NOT EXISTS '
+            '(SELECT 1 FROM valoraciones_productos WHERE valoraciones_productos.producto_id = productos.id)'
+        )
+        connection.exec_driver_sql(
+            'UPDATE tiendas SET valoracion_media = NULL WHERE NOT EXISTS '
+            '(SELECT 1 FROM valoraciones_tiendas WHERE valoraciones_tiendas.tienda_id = tiendas.id)'
+        )
+
+
+def actualizar_visitas(engine):
+    """Añade el registro anónimo de visualizaciones a instalaciones existentes."""
+    if engine.dialect.name != 'postgresql':
+        return
+    with engine.begin() as connection:
+        connection.exec_driver_sql("""
+            CREATE TABLE IF NOT EXISTS visitas_tiendas (
+                id SERIAL PRIMARY KEY,
+                tienda_id INTEGER NOT NULL REFERENCES tiendas(id) ON DELETE CASCADE,
+                visitante_hash VARCHAR(64) NOT NULL,
+                fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        connection.exec_driver_sql("""
+            CREATE TABLE IF NOT EXISTS visitas_productos (
+                id SERIAL PRIMARY KEY,
+                producto_id INTEGER NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
+                visitante_hash VARCHAR(64) NOT NULL,
+                fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_visitas_tiendas_tienda_id ON visitas_tiendas (tienda_id)')
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_visitas_tiendas_fecha ON visitas_tiendas (fecha)')
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_visitas_productos_producto_id ON visitas_productos (producto_id)')
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_visitas_productos_fecha ON visitas_productos (fecha)')
+        connection.exec_driver_sql('ALTER TABLE visitas_tiendas ADD COLUMN IF NOT EXISTS visitante_hash VARCHAR(64)')
+        connection.exec_driver_sql('ALTER TABLE visitas_productos ADD COLUMN IF NOT EXISTS visitante_hash VARCHAR(64)')
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_visitas_tiendas_visitante_hash ON visitas_tiendas (visitante_hash)')
+        connection.exec_driver_sql('CREATE INDEX IF NOT EXISTS ix_visitas_productos_visitante_hash ON visitas_productos (visitante_hash)')
+
+
+def actualizar_pedidos(engine):
+    if engine.dialect.name != 'postgresql':
+        return
+    columns = {column['name']: column for column in inspect(engine).get_columns('pedidos')}
+    expected = {'descuento', 'nombre_comprador', 'apellidos_comprador', 'email_comprador', 'moneda', 'pago_completado'}
+    if not (expected <= columns.keys() and columns['usuario_id']['nullable'] and str(columns['total']['type']).startswith('NUMERIC')):
+        ejecutar(engine, '20260914_compra_directa.sql')
+    if not {'stripe_session_id', 'reserva_expira', 'reserva_liberada'} <= columns.keys():
+        ejecutar(engine, '20260914_stripe.sql')
+    with engine.begin() as connection:
+        connection.exec_driver_sql("ALTER TYPE estadopedido ADD VALUE IF NOT EXISTS 'PREPARACION'")
+    with engine.begin() as connection:
+        connection.exec_driver_sql("UPDATE pedidos SET estado = 'PREPARACION' WHERE estado::text IN ('PENDIENTE', 'CONFIRMADO')")
+        connection.exec_driver_sql("UPDATE pedidos SET estado = 'CANCELADO' WHERE estado::text = 'DEVUELTO'")
+        connection.exec_driver_sql("ALTER TABLE productos_pedido ADD COLUMN IF NOT EXISTS subpedido_id INTEGER")
+        connection.exec_driver_sql("ALTER TABLE productos_pedido ADD COLUMN IF NOT EXISTS cancelado BOOLEAN NOT NULL DEFAULT FALSE")
+        connection.exec_driver_sql("ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS importe_pago_original NUMERIC(12,2)")
+        connection.exec_driver_sql("ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS reembolso_pendiente NUMERIC(12,2) NOT NULL DEFAULT 0")
+        connection.exec_driver_sql("UPDATE pedidos SET importe_pago_original = total WHERE importe_pago_original IS NULL")
+        connection.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_productos_pedido_subpedido_id ON productos_pedido (subpedido_id)")
+        nuevos = connection.exec_driver_sql("""
+            INSERT INTO subpedidos (pedido_id, tienda_id, estado, fecha_actualizacion)
+            SELECT DISTINCT p.id, pr.tienda_id,
+                CASE WHEN p.estado::text = 'CANCELADO' THEN 'CANCELADO'::estadosubpedido
+                     WHEN p.estado::text IN ('ENVIADO', 'ENTREGADO') THEN 'RECOGIDO'::estadosubpedido
+                     ELSE 'PREPARACION'::estadosubpedido END, CURRENT_TIMESTAMP
+            FROM pedidos p JOIN productos_pedido pp ON pp.pedido_id = p.id
+            JOIN productos pr ON pr.id = pp.producto_id
+            ON CONFLICT (pedido_id, tienda_id) DO NOTHING
+            RETURNING id
+        """).scalars().all()
+        if inspect(connection).has_table('estados_pedido_tienda'):
+            for subpedido_id in nuevos:
+                connection.execute(text("""
+                    UPDATE subpedidos s SET estado = CASE
+                    WHEN antiguo.estado::text = 'CANCELADO' THEN 'CANCELADO'::estadosubpedido
+                    WHEN antiguo.estado::text IN ('ENVIADO', 'ENTREGADO') THEN 'RECOGIDO'::estadosubpedido
+                    ELSE 'PREPARACION'::estadosubpedido END
+                    FROM estados_pedido_tienda antiguo
+                    WHERE antiguo.pedido_id = s.pedido_id AND antiguo.tienda_id = s.tienda_id
+                    AND s.id = :subpedido_id
+                """), {"subpedido_id": subpedido_id})
+        connection.exec_driver_sql("""
+            UPDATE productos_pedido pp SET subpedido_id = s.id
+            FROM subpedidos s JOIN productos pr ON pr.tienda_id = s.tienda_id
+            WHERE pp.pedido_id = s.pedido_id AND pp.producto_id = pr.id AND pp.subpedido_id IS NULL
+        """)
+        connection.exec_driver_sql("ALTER TABLE productos_pedido ALTER COLUMN subpedido_id SET NOT NULL")
+        connection.exec_driver_sql("""
+            DO $$ BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_productos_pedido_subpedido') THEN
+                ALTER TABLE productos_pedido ADD CONSTRAINT fk_productos_pedido_subpedido
+                FOREIGN KEY (subpedido_id) REFERENCES subpedidos(id);
+              END IF;
+            END $$
+        """)

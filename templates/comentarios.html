@@ -1,0 +1,27 @@
+<section class="comments-section" aria-labelledby="commentsTitle">
+<h2 id="commentsTitle">Comentarios</h2>
+{% if es_comprador %}
+<form class="comment-form" data-comment-type="{{ tipo_comentario }}" data-comment-id="{{ id_comentario }}">
+<label for="commentText">{{ 'Editar tu comentario' if comentario_usuario else 'Escribe un comentario' }}</label>
+<textarea id="commentText" name="texto" minlength="1" maxlength="1000" required>{{ comentario_usuario or '' }}</textarea>
+<div class="comment-actions"><button type="submit" class="search-button">{{ 'Actualizar comentario' if comentario_usuario else 'Publicar comentario' }}</button>{% if comentario_usuario %}<button type="button" class="clear-filters" data-delete-comment>Eliminar mi comentario</button>{% endif %}</div>
+<p role="status" data-comment-status></p>
+</form>
+{% endif %}
+{% if comentarios %}
+<ol class="comment-list">
+{% for comentario in comentarios %}
+<li><strong>{{ comentario.autor }}</strong><time datetime="{{ comentario.fecha_actualizacion.isoformat() }}">{{ comentario.fecha_actualizacion.strftime('%d/%m/%Y') }}</time><p>{{ comentario.texto }}</p>
+{% if es_admin %}
+<form class="admin-comment-form" data-comment-type="{{ tipo_comentario }}" data-comment-id="{{ id_comentario }}" data-comment-user-id="{{ comentario.usuario_id }}">
+<label for="adminComment{{ loop.index }}">Editar comentario de {{ comentario.autor }}</label>
+<textarea id="adminComment{{ loop.index }}" name="texto" minlength="1" maxlength="1000" required>{{ comentario.texto }}</textarea>
+<div class="comment-actions"><button type="submit" class="search-button">Guardar cambios</button><button type="button" class="clear-filters" data-admin-delete-comment>Borrar comentario</button></div>
+<p role="status" data-comment-status></p>
+</form>
+{% endif %}
+</li>
+{% endfor %}
+</ol>
+{% else %}<p>Todavía no hay comentarios.</p>{% endif %}
+</section>

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Seguimiento del pedido - Distans{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/catalogo.css"><link rel="stylesheet" href="/static/pedidos.css?v=1">{% endblock %}
+{% block content %}
+<main class="catalog-page order-page">
+  <header class="order-intro"><span class="order-kicker">Tus compras</span><h1>Seguimiento del pedido</h1><p>Consulta el estado y los importes de tu compra con el código que recibiste al finalizarla.</p></header>
+  <form class="order-search" method="get" action="/pedidos/seguimiento" role="search"><label for="codigo">Código de pedido</label><div class="order-search-row"><input id="codigo" name="codigo" value="{{ codigo }}" maxlength="100" placeholder="Introduce tu código de pedido" autocomplete="off" required><button type="submit">Consultar pedido</button></div></form>
+  {% if codigo and not pedido %}<p class="order-notice" role="status">No encontramos ningún pedido con ese código. Comprueba que lo has copiado completo.</p>{% endif %}
+  {% if pedido %}
+  <div class="order-heading"><div><span class="order-kicker">Detalle de la compra</span><h2>Pedido <span class="order-code">{{ pedido.codigo_pedido }}</span></h2><p>Realizado el {{ pedido.fecha.strftime('%d/%m/%Y a las %H:%M') }}</p></div><span class="order-status order-status--{{ pedido.estado.name|lower }}">{{ pedido.estado.value|capitalize }}</span></div>
+  {% if pedido.reserva_liberada %}<p class="order-notice" role="status">La reserva de este pedido ha caducado.</p>{% endif %}
+  <div class="order-layout"><section class="order-card" aria-labelledby="order-products-title"><div class="order-card-heading"><h3 id="order-products-title">Productos</h3><span>{{ pedido.items|length }} {% if pedido.items|length == 1 %}producto{% else %}productos{% endif %}</span></div><ul class="order-products">{% for linea in pedido.items %}<li class="{% if linea.cancelado %}order-product-cancelled{% endif %}"><div class="order-product-icon" aria-hidden="true">{{ linea.producto.nombre[:1]|upper }}</div><div class="order-product-copy"><strong>{{ linea.producto.nombre }}</strong><span>{{ linea.cantidad }} × {{ '%.2f'|format(linea.precio_unitario) }} €{% if linea.cancelado %} · Cancelado por la tienda{% endif %}</span></div><strong class="order-product-total">{{ '%.2f'|format(linea.total) }} €</strong></li>{% endfor %}</ul></section>
+  <section class="order-card order-summary" aria-labelledby="order-summary-title"><h3 id="order-summary-title">Resumen del pedido</h3><dl><div><dt>Subtotal</dt><dd>{{ '%.2f'|format(pedido.subtotal) }} €</dd></div>{% if pedido.descuento %}<div><dt>Descuento</dt><dd>−{{ '%.2f'|format(pedido.descuento) }} €</dd></div>{% endif %}<div><dt>Impuestos</dt><dd>{{ '%.2f'|format(pedido.impuesto) }} €</dd></div><div><dt>Entrega</dt><dd>{{ '%.2f'|format(pedido.coste_entrega) }} €</dd></div><div class="order-grand-total"><dt>Total</dt><dd>{{ '%.2f'|format(pedido.total) }} €</dd></div></dl>{% if pedido.reembolso_pendiente %}<p class="order-notice">Importe pendiente de reembolso: {{ '%.2f'|format(pedido.reembolso_pendiente) }} €</p>{% endif %}</section></div>
+  {% endif %}
+</main>
+{% endblock %}

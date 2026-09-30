@@ -1,0 +1,40 @@
+
+<header class="market-header">
+<div class="market-top">        <a class="brand" href="/inicio" aria-label="Distans: inicio">
+            <div class="brand-mark" aria-hidden="true"><img src="/static/logo.png" alt="" width="52" height="52" style="width:100%;height:100%;object-fit:contain">
+            </div>
+            <span class="brand-name">DISTANS</span>
+        </a>
+
+
+<div class="market-location-controls">
+{% if es_inicio %}<button type="button" class="location-button" id="selectLocation">Seleccionar ubicación</button>
+<label class="radius-control"><span class="sr-only">Radio de búsqueda</span><select id="searchRadius"><option value="0">Radio</option><option value="500">500 m</option><option value="1000">1 km</option><option value="2000">2 km</option><option value="5000">5 km</option><option value="10000">10 km</option></select></label>{% else %}<a class="location-button location-link" href="/inicio?tab=mapa">Buscar por ubicación y radio</a>{% endif %}
+<label class="catalog-type-control"><span class="sr-only">Tipo de cat&aacute;logo</span><select name="tipo_catalogo" form="catalogSearch" aria-label="Tipo de catálogo"><option value="todo" {% if tipo_catalogo != "online" %}selected{% endif %}>Ver todo el cat&aacute;logo</option><option value="online" {% if tipo_catalogo == "online" %}selected{% endif %}>Comprar online</option></select></label>
+</div>
+<div class="market-account"><a class="account-button" href="/pedidos/seguimiento">Seguir pedido</a>{% if es_comprador %}<a class="account-button" href="/pedidos/historial">Mis pedidos</a><a class="account-button" href="/favoritos">Favoritos</a>{% endif %}{% if user_name %}<span class="user-name">{{ user_name }}</span><button class="account-button" type="button" onclick="cerrarSesion()">Cerrar sesión</button>{% include "icono_cuenta.html" %}{% elif es_invitado %}<span class="user-name">Invitado</span><a class="account-button" href="/login">Iniciar sesión</a>{% else %}<a class="account-button" href="/registro">Registrarse</a><a class="account-button" href="/login">Iniciar sesión</a>{% endif %}
+{% if puede_comprar %}<a class="market-icon cart-icon" href="/carrito" aria-label="Carrito"><svg viewBox="0 0 40 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 2l8 3 5 22h18l6-19H10M14 14h22M16 21h18M20 8l2 18M30 8l-2 18"/><circle cx="17" cy="32" r="2"/><circle cx="31" cy="32" r="2"/></svg></a>{% endif %}</div>
+</div>
+        <form class="search-form" id="catalogSearch" action="/inicio" method="get" role="search">
+            <div><label for="headerBusqueda">¿Qué buscas?</label><input id="headerBusqueda" name="q" value="{{ q if es_inicio else '' }}" maxlength="120" placeholder="Producto, marca o tienda"></div>
+            {% if es_inicio %}<button type="button" class="filters-button" data-filters-button aria-expanded="false" aria-controls="advancedFilters">Filtros</button>
+            <div class="advanced-filters" id="advancedFilters" data-filters-panel hidden>
+            <div><label for="headerCategoria">Categor&iacute;a</label><select id="headerCategoria" name="categoria"><option value="">Todas las categor&iacute;as</option>{% for categoria in categorias %}<option value="{{ categoria.value }}" {% if categoria.value == categoria_seleccionada %}selected{% endif %}>{{ categoria.value }}</option>{% endfor %}</select></div>
+            <label class="featured-filter"><input type="checkbox" name="destacados" value="true" {% if destacados %}checked{% endif %}> Solo destacados</label>
+            <div><label for="filterMinPrice">Precio m&iacute;nimo</label><input id="filterMinPrice" name="precio_min" type="number" min="0" step="0.01" value="{{ precio_min if precio_min is not none else '' }}"></div>
+            <div><label for="filterMaxPrice">Precio m&aacute;ximo</label><input id="filterMaxPrice" name="precio_max" type="number" min="0" step="0.01" value="{{ precio_max if precio_max is not none else '' }}"></div>
+            <div class="rating-filter"><label for="filterRating">Valoraci&oacute;n del producto desde</label><input id="filterRating" name="valoracion_min" type="range" min="0" max="5" step="0.1" value="{{ valoracion_min if valoracion_min is not none else 0 }}" data-rating-filter><output for="filterRating">{{ "%.1f"|format(valoracion_min if valoracion_min is not none else 0) }}</output></div>
+            <div><label for="filterMode">Modalidad</label><select id="filterMode" name="modalidad"><option value="">Todas</option><option value="online" {% if modalidad == 'online' %}selected{% endif %}>Online</option><option value="presencial" {% if modalidad == 'presencial' %}selected{% endif %}>Presencial</option></select></div>
+            <div class="rating-filter"><label for="filterStoreRating">Valoraci&oacute;n de tienda desde</label><input id="filterStoreRating" name="tienda_valoracion_min" type="range" min="0" max="5" step="0.1" value="{{ tienda_valoracion_min if tienda_valoracion_min is not none else 0 }}" data-rating-filter><output for="filterStoreRating">{{ "%.1f"|format(tienda_valoracion_min if tienda_valoracion_min is not none else 0) }}</output></div>
+            <a class="clear-filters" data-clear-filters href="/inicio?q=&amp;tab={{ vista_inicio }}">Quitar filtros</a>
+            </div>{% endif %}
+            <button type="submit" class="search-button">Buscar</button>
+{% if es_inicio %}
+            <input type="hidden" name="tab" value="{{ vista_inicio }}" data-current-tab>
+            <input type="hidden" name="latitud" data-geo="latitud" {% if latitud is not none %}value="{{ latitud }}"{% else %}disabled{% endif %}>
+            <input type="hidden" name="longitud" data-geo="longitud" {% if longitud is not none %}value="{{ longitud }}"{% else %}disabled{% endif %}>
+            <input type="hidden" name="radio" data-geo="radio" value="{{ radio }}">
+        {% endif %}
+</form>
+<nav class="market-tabs" aria-label="Navegación de compras"><a href="/inicio?tab=mapa" data-tab="mapa">MAPA</a><a href="/inicio?q=&amp;tab=productos" data-tab="productos">CATÁLOGO</a><a href="/inicio?tab=tiendas" data-tab="tiendas">TIENDAS</a></nav>
+</header>

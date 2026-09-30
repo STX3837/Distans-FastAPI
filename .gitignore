@@ -15,9 +15,13 @@ db.sqlite3
 
 # Archivos estáticos y multimedia (opcional en desarrollo, vital en producción)
 /media/
-/static/
+/static/uploads/
 
 # Archivos de tu IDE/Editor
 .vscode/
 .idea/
 *.swp
+# Capturas locales de verificación
+/artifacts/
+/.load-venv/
+/load_results/

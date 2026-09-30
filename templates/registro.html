@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Crear una cuenta - Distans{% endblock %}
+
+{% block content %}
+<main class="page-wrap">
+    <section class="card card-registro">
+        <div class="header-block">
+            <h1>Crear una cuenta</h1>
+        </div>
+
+        <div class="success-message" id="successMessage">✓ Cuenta creada exitosamente</div>
+
+        <p class="note">Completa tus datos de contacto y dirección para utilizarlos al realizar una compra.</p>
+        <form id="registroForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="email">Correo electrónico</label>
+                    <input type="email" id="email" name="email" maxlength="254" required>
+                    <div class="error-message" id="errorEmail"></div>
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Teléfono</label>
+                    <input type="tel" id="telefono" name="telefono" minlength="7" maxlength="20" pattern="[+0-9 ()-]+" required>
+                    <div class="error-message" id="error_telefono"></div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="nombre">Nombre</label>
+                    <input type="text" id="nombre" name="nombre" maxlength="50" required>
+                    <div class="error-message" id="errorNombre"></div>
+                </div>
+                <div class="form-group">
+                    <label for="apellidos">Apellidos</label>
+                    <input type="text" id="apellidos" name="apellidos" maxlength="100" required>
+                    <div class="error-message" id="errorApellidos"></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="direccion">Dirección</label>
+                <input type="text" id="direccion" name="direccion" maxlength="200" required>
+                <div class="error-message" id="error_direccion"></div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="ciudad">Ciudad</label>
+                    <input type="text" id="ciudad" name="ciudad" maxlength="80" required>
+                    <div class="error-message" id="error_ciudad"></div>
+                </div>
+                <div class="form-group">
+                    <label for="codigo_postal">Código Postal</label>
+                    <input type="text" id="codigo_postal" name="codigo_postal" minlength="3" maxlength="12" pattern="[A-Za-z0-9 -]+" required>
+                    <div class="error-message" id="error_codigo_postal"></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="rol">Rol</label>
+                <select id="rol" name="rol" required>
+                    <option value="">Selecciona un rol</option>
+                    <option value="comprador">Comprador</option>
+                    <option value="vendedor">Vendedor</option>
+                </select>
+                <div class="error-message" id="errorRol"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="contrasena">Contraseña</label>
+                <input type="password" id="contrasena" name="contrasena" minlength="8" maxlength="128" required>
+                <div class="error-message" id="errorContrasena"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="contrasena_confirmacion">Confirmar contraseña</label>
+                <input type="password" id="contrasena_confirmacion" name="contrasena_confirmacion" required>
+                <div class="error-message" id="errorConfirmacion"></div>
+            </div>
+
+            <button type="submit" class="button">Crear cuenta</button>
+        </form>
+    </section>
+</main>
+{% endblock %}
