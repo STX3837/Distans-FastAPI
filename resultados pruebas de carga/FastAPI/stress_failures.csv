@@ -1,0 +1,3 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,GET /inicio [catálogo],"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",1,2026-09-29T20:52:36Z,2026-09-29T20:52:36Z
+GET,GET /productos/:id,"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",1,2026-09-29T20:52:36Z,2026-09-29T20:52:36Z

@@ -1,0 +1,18 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,GET /accounts/guest-login/,HTTPError('500 Server Error: Internal Server Error for url: GET /accounts/guest-login/'),25,2026-09-30T16:35:47Z,2026-09-30T16:35:53Z
+GET,GET /gestion/pedidos/,HTTPError('500 Server Error: Internal Server Error for url: GET /gestion/pedidos/'),23,2026-09-30T16:35:52Z,2026-09-30T16:37:49Z
+POST,POST /accounts/login/,CatchResponseError('no se pudo iniciar sesión como comprador@demo.example.com'),15,2026-09-30T16:35:47Z,2026-09-30T16:36:09Z
+GET,GET /productos/,CatchResponseError('el catálogo no contiene productos; ejecuta seed_demo'),36,2026-09-30T16:35:52Z,2026-09-30T16:36:14Z
+GET,GET /pedidos/mis-pedidos/,HTTPError('500 Server Error: Internal Server Error for url: GET /pedidos/mis-pedidos/'),25,2026-09-30T16:35:52Z,2026-09-30T16:37:37Z
+GET,GET /productos/:id/,HTTPError('500 Server Error: Internal Server Error for url: GET /productos/:id/'),31,2026-09-30T16:36:02Z,2026-09-30T16:37:43Z
+GET,GET /carrito/,HTTPError('500 Server Error: Internal Server Error for url: GET /carrito/'),1,2026-09-30T16:36:12Z,2026-09-30T16:36:12Z
+GET,GET /tiendas/,HTTPError('500 Server Error: Internal Server Error for url: GET /tiendas/'),7,2026-09-30T16:35:47Z,2026-09-30T16:37:33Z
+GET,GET /vendedor/,HTTPError('500 Server Error: Internal Server Error for url: GET /vendedor/'),31,2026-09-30T16:35:53Z,2026-09-30T16:37:43Z
+GET,GET /cuenta/,HTTPError('500 Server Error: Internal Server Error for url: GET /cuenta/'),8,2026-09-30T16:35:48Z,2026-09-30T16:37:06Z
+POST,POST /accounts/login/,CatchResponseError('no se pudo iniciar sesión como libreria@demo.example.com'),7,2026-09-30T16:35:53Z,2026-09-30T16:36:09Z
+GET,GET /productos/,HTTPError('500 Server Error: Internal Server Error for url: GET /productos/'),62,2026-09-30T16:35:54Z,2026-09-30T16:37:36Z
+GET,GET /productos/ [filtros],HTTPError('500 Server Error: Internal Server Error for url: GET /productos/ [filtros]'),21,2026-09-30T16:35:53Z,2026-09-30T16:37:37Z
+GET,GET /gestion/pedidos/ [filtro],HTTPError('500 Server Error: Internal Server Error for url: GET /gestion/pedidos/ [filtro]'),3,2026-09-30T16:37:06Z,2026-09-30T16:37:12Z
+POST,POST /productos/:id/agregar-carrito/,HTTPError('500 Server Error: Internal Server Error for url: POST /productos/:id/agregar-carrito/'),4,2026-09-30T16:36:54Z,2026-09-30T16:37:34Z
+GET,GET /tiendas/mapa/,HTTPError('500 Server Error: Internal Server Error for url: GET /tiendas/mapa/'),12,2026-09-30T16:36:04Z,2026-09-30T16:37:35Z
+GET,GET /favoritos/,HTTPError('500 Server Error: Internal Server Error for url: GET /favoritos/'),17,2026-09-30T16:35:49Z,2026-09-30T16:37:37Z

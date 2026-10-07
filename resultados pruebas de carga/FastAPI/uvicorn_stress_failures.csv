@@ -1,0 +1,22 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,GET /favoritos,"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",4,2026-09-30T19:17:00Z,2026-09-30T19:20:13Z
+GET,GET /usuarios/cuenta,"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",6,2026-09-30T19:17:00Z,2026-09-30T19:20:13Z
+GET,GET /inicio [catálogo],RemoteDisconnected('Remote end closed connection without response'),6,2026-09-30T19:17:25Z,2026-09-30T19:20:13Z
+GET,GET /inicio [filtros],RemoteDisconnected('Remote end closed connection without response'),1,2026-09-30T19:17:25Z,2026-09-30T19:17:25Z
+GET,GET /productos/:id,RemoteDisconnected('Remote end closed connection without response'),3,2026-09-30T19:17:19Z,2026-09-30T19:19:22Z
+GET,GET /inicio [catálogo],"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",30,2026-09-30T19:17:00Z,2026-09-30T19:20:21Z
+GET,GET /inicio [filtros],"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",8,2026-09-30T19:18:02Z,2026-09-30T19:20:13Z
+GET,GET /productos/:id,"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",10,2026-09-30T19:17:01Z,2026-09-30T19:20:13Z
+GET,GET /favoritos,RemoteDisconnected('Remote end closed connection without response'),1,2026-09-30T19:16:05Z,2026-09-30T19:16:05Z
+GET,GET /inicio [tiendas],RemoteDisconnected('Remote end closed connection without response'),4,2026-09-30T19:17:25Z,2026-09-30T19:18:53Z
+GET,GET /inicio [mapa],RemoteDisconnected('Remote end closed connection without response'),2,2026-09-30T19:17:25Z,2026-09-30T19:19:06Z
+GET,GET /usuarios/cuenta,RemoteDisconnected('Remote end closed connection without response'),1,2026-09-30T19:20:18Z,2026-09-30T19:20:18Z
+GET,GET /pedidos/historial,"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",7,2026-09-30T19:17:23Z,2026-09-30T19:20:13Z
+GET,GET /gestion/tiendas/:id/pedidos,"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",2,2026-09-30T19:20:13Z,2026-09-30T19:20:13Z
+GET,GET /gestion/tiendas/:id/pedidos [filtro],"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",2,2026-09-30T19:17:01Z,2026-09-30T19:20:20Z
+GET,GET /inicio [mapa],"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",5,2026-09-30T19:18:15Z,2026-09-30T19:20:20Z
+GET,GET /pedidos/historial,RemoteDisconnected('Remote end closed connection without response'),1,2026-09-30T19:17:25Z,2026-09-30T19:17:25Z
+GET,GET /inicio [tiendas],"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",8,2026-09-30T19:17:01Z,2026-09-30T19:20:20Z
+GET,GET /mi-tienda,"ConnectionAbortedError(10053, 'Se ha anulado una conexión establecida por el software en su equipo host', None, 10053, None)",9,2026-09-30T19:17:01Z,2026-09-30T19:20:13Z
+PUT,PUT /api/carrito/productos/:id,CatchResponseError('carrito rechazado (0): '),6,2026-09-30T19:18:02Z,2026-09-30T19:20:20Z
+GET,GET /gestion/tiendas/:id/pedidos [filtro],RemoteDisconnected('Remote end closed connection without response'),1,2026-09-30T19:17:24Z,2026-09-30T19:17:24Z
