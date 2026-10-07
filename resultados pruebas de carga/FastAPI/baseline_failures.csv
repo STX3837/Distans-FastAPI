@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,GET /productos/:id,RemoteDisconnected('Remote end closed connection without response'),1,2026-09-30T19:04:15Z,2026-09-30T19:04:15Z
